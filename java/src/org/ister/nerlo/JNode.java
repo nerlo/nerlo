@@ -58,32 +58,32 @@ public class JNode {
 	public void run() throws Exception {
 
         if (node.ping(peername, 2000)) {
-            System.out.println(peername + ": pong.");
+            System.err.println(peername + ": pong.");
         } else {
         	// to die or not to die ...
-            System.out.println(peername + ": pang!");
+            System.err.println(peername + ": pang!");
         }
 
         while (true) {
             try {
                 OtpErlangObject o = this.mbox.receive();
-                System.out.println("Received something from somewehere.");
+                System.err.println("Received something from somewehere.");
                 if (o instanceof OtpErlangTuple) {
-                	System.out.println("got tuple: " + o.toString());
+                	System.err.println("got tuple: " + o.toString());
                 	OtpErlangTuple t = (OtpErlangTuple) o;
                 	OtpErlangPid from = this.getFrom(t);
                 	this.processMsg(from, t);
                 } else {
-                	System.out.println("Error: tuple expected");
+                	System.err.println("Error: tuple expected");
                 }
 	        } catch (OtpErlangDecodeException e) {
-	            System.out.println("Error: received message could not be decoded\n" + e.toString());
+	            System.err.println("Error: received message could not be decoded\n" + e.toString());
 	            continue;
 	        } catch (OtpErlangExit e) {
-	            System.out.println("Error: remote pid " + e.pid() + " has terminated.");
+	            System.err.println("Error: remote pid " + e.pid() + " has terminated.");
 	            continue;
 	        } catch (Exception e) {
-                System.out.println("Error: unexpected exception in while\n" + e.toString());
+                System.err.println("Error: unexpected exception in while\n" + e.toString());
                 System.exit(1);
             }
         }
@@ -97,7 +97,7 @@ public class JNode {
         if (this.match(t, 1, new OtpErlangAtom("die"))) {
         	this.shutdown(node);
         }
-        System.out.println("Echoing back to: " + from.toString());
+        System.err.println("Echoing back to: " + from.toString());
         this.mbox.send(from, t.elementAt(1));
 	}
 
@@ -134,27 +134,27 @@ public class JNode {
 
 	private void shutdown(OtpNode node) {
 		OtpEpmd.unPublishPort(node);
-		System.out.println("Shutting down...");
+		System.err.println("Shutting down...");
 		System.exit(0);
 	}
 
 	private OtpNode getNode() throws Exception {
     	try {
     		OtpNode node = new OtpNode(this.nodename, this.cookie);
-    		System.out.println("node running: " + this.nodename);
+    		System.err.println("node running: " + this.nodename);
     		if (OtpEpmd.publishPort(node)) {
-    			System.out.println("Node registered");
+    			System.err.println("Node registered");
     		} else {
-    			System.out.println("Warning: Node registration failed");
+    			System.err.println("Warning: Node registration failed");
     		}
     		String[] names = OtpEpmd.lookupNames();
     		for (String name: names) {
-    			System.out.println(name);
+    			System.err.println(name);
     		}
     		this.mbox = node.createMbox(this.mboxname);
     		return node;
 	    } catch (IOException e) {
-	    	System.out.println("Fatal: no node\n" + e.toString());
+	    	System.err.println("Fatal: no node\n" + e.toString());
 	    	throw e;
         }
 	}
