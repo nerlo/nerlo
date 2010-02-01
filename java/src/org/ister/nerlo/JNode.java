@@ -22,8 +22,8 @@ import com.ericsson.otp.erlang.*;
 public class JNode {
 
 	String cookie   = "123456"; // cookie of Erlang cluster
-	String nodename = "echo";   // name of this node
-	String mboxname = "echo";   // process registered name (globally?)
+	String nodename = "jnode";  // name of this node
+	String mboxname = "jnode";  // process registered name (globally?)
 	String peername = "shell";  // name of peer node
 
 	OtpNode node = null;
@@ -58,32 +58,32 @@ public class JNode {
 	public void run() throws Exception {
 
         if (node.ping(peername, 2000)) {
-            System.err.println(peername + ": pong.");
+            System.out.println(peername + ": pong.");
         } else {
         	// to die or not to die ...
-            System.err.println(peername + ": pang!");
+            System.out.println(peername + ": pang!");
         }
 
         while (true) {
             try {
                 OtpErlangObject o = this.mbox.receive();
-                System.err.println("Received something from somewehere.");
+                System.out.println("Received something from somewehere.");
                 if (o instanceof OtpErlangTuple) {
-                	System.err.println("got tuple: " + o.toString());
+                	System.out.println("got tuple: " + o.toString());
                 	OtpErlangTuple t = (OtpErlangTuple) o;
                 	OtpErlangPid from = this.getFrom(t);
                 	this.processMsg(from, t);
                 } else {
-                	System.err.println("Error: tuple expected");
+                	System.out.println("Error: tuple expected");
                 }
 	        } catch (OtpErlangDecodeException e) {
-	            System.err.println("Error: received message could not be decoded\n" + e.toString());
+	            System.out.println("Error: received message could not be decoded\n" + e.toString());
 	            continue;
 	        } catch (OtpErlangExit e) {
-	            System.err.println("Error: remote pid " + e.pid() + " has terminated.");
+	            System.out.println("Error: remote pid " + e.pid() + " has terminated.");
 	            continue;
 	        } catch (Exception e) {
-                System.err.println("Error: unexpected exception in while\n" + e.toString());
+                System.out.println("Error: unexpected exception in while\n" + e.toString());
                 System.exit(1);
             }
         }
@@ -97,7 +97,7 @@ public class JNode {
         if (this.match(t, 1, new OtpErlangAtom("die"))) {
         	this.shutdown(node);
         }
-        System.err.println("Echoing back to: " + from.toString());
+        System.out.println("Echoing back to: " + from.toString());
         this.mbox.send(from, t.elementAt(1));
 	}
 
@@ -134,27 +134,27 @@ public class JNode {
 
 	private void shutdown(OtpNode node) {
 		OtpEpmd.unPublishPort(node);
-		System.err.println("Shutting down...");
+		System.out.println("Shutting down...");
 		System.exit(0);
 	}
 
 	private OtpNode getNode() throws Exception {
     	try {
     		OtpNode node = new OtpNode(this.nodename, this.cookie);
-    		System.err.println("node running: " + this.nodename);
+    		System.out.println("node running: " + this.nodename);
     		if (OtpEpmd.publishPort(node)) {
-    			System.err.println("Node registered");
+    			System.out.println("Node registered");
     		} else {
-    			System.err.println("Warning: Node registration failed");
+    			System.out.println("Warning: Node registration failed");
     		}
     		String[] names = OtpEpmd.lookupNames();
     		for (String name: names) {
-    			System.err.println(name);
+    			System.out.println(name);
     		}
     		this.mbox = node.createMbox(this.mboxname);
     		return node;
 	    } catch (IOException e) {
-	    	System.err.println("Fatal: no node\n" + e.toString());
+	    	System.out.println("Fatal: no node\n" + e.toString());
 	    	throw e;
         }
 	}

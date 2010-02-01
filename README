@@ -1,1 +1,3 @@
 nerlo will be an Erlang bridge to the neo4j graph database
+
+for now, you should not expect anything to work :)
