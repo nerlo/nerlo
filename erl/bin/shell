@@ -1,0 +1,20 @@
+#!/bin/sh
+
+SCRIPT_DIR="`dirname \"${0}\"`"
+SCRIPT_DIR="`( cd \"${SCRIPT_DIR}\" && pwd )`"
+
+. ${SCRIPT_DIR}/setup.inc
+
+export ERL_HOME
+export JAVA_HOME
+export ERL_CRASH_DUMP=${SCRIPT_DIR}/erl_crash.dump
+
+ERL=${ERL_HOME}/bin/erl
+ERL_FLAGS="+K true +S 1:1 -pa ${SCRIPT_DIR}/../ebin -setcookie `cat ${SCRIPT_DIR}/cookie`"
+
+NAME="shell"
+
+CMD="${ERL} ${ERL_FLAGS} -sname ${NAME}"
+echo $CMD
+$CMD
+
