@@ -1,3 +1,6 @@
+%% @doc Main ;)
+%%
+%% @author Ingo Schramm
 
 -module(nerlo).
 

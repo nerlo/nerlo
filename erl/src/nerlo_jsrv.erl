@@ -1,5 +1,5 @@
 %% @doc This is the  Erlang server maintaining connections
-%%      to the hidden java node.
+%% to the hidden java node.
 %%
 %% @author Ingo Schramm
 
@@ -114,7 +114,7 @@ handshake() ->
     undef.
 
 do_job(Spec) ->
-    Spec.
+    {self(),Spec}.
 
 start_worker(S) ->
     gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
@@ -130,7 +130,9 @@ start_stop_test() ->
 job_test() ->
     start(),
     Spec = test,
-    ?assertEqual(Spec, job(Spec)),
+    {Pid1,Spec} = job(Spec),
+    {Pid2,Spec} = job(Spec),
+    ?assertNot(Pid1 =:= Pid2),
     stop().
 
 

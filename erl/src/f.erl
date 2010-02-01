@@ -1,3 +1,6 @@
+%% @doc Some useful functions.
+%%
+%% @author Ingo Schramm
 
 -module(f).
 

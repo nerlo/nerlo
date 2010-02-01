@@ -1,7 +1,6 @@
-
 %% @doc simple logging
 %%
-%% author: ingo schramm
+%% @author Ingo Schramm
 
 -module(log).
 
