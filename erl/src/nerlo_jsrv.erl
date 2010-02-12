@@ -139,7 +139,7 @@ start_worker(S) ->
     
 shutdown(S) ->
     {ok, Hostname} = inet:gethostname(),
-    {jnode,list_to_atom("jnode@" ++ Hostname)} ! {self(),die},
+    {jnode,list_to_atom("jnode@" ++ Hostname)} ! {self(),{die}},
     timer:sleep(100),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 

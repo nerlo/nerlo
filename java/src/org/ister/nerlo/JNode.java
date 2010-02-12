@@ -70,11 +70,10 @@ public class JNode {
                 System.out.println("Received something from somewehere.");
                 if (o instanceof OtpErlangTuple) {
                 	System.out.println("got tuple: " + o.toString());
-                	OtpErlangTuple t = (OtpErlangTuple) o;
-                	OtpErlangPid from = this.getFrom(t);
-                	this.processMsg(from, t);
+                	JMsg msg = new JMsg((OtpErlangTuple) o);
+                	processMsg(msg);
                 } else {
-                	System.out.println("Error: tuple expected");
+                	throw new IllegalArgumentException("Tuple expected");
                 }
 	        } catch (OtpErlangDecodeException e) {
 	            System.out.println("Error: received message could not be decoded\n" + e.toString());
@@ -82,56 +81,24 @@ public class JNode {
 	        } catch (OtpErlangExit e) {
 	            System.out.println("Error: remote pid " + e.pid() + " has terminated.");
 	            continue;
-	        } catch (Exception e) {
-                System.out.println("Error: unexpected exception in while\n" + e.toString());
-                System.exit(1);
+	        } catch (IllegalArgumentException e) {
+	        	System.out.println("Error: parsing message\n" + e.toString());
+//	        } catch (Exception e) {
+//                System.out.println("Error: unexpected exception in while\n" + e.toString());
+//                System.exit(1);
             }
         }
     }
-
-	/**
-	 *
-	 * @param t
-	 */
-	public void processMsg(OtpErlangPid from, OtpErlangTuple t) throws Exception {
-        if (this.match(t, 1, new OtpErlangAtom("die"))) {
-        	this.shutdown(node);
-        }
-        System.out.println("Echoing back to: " + from.toString());
-        this.mbox.send(from, t.elementAt(1));
+	
+	public void processMsg(JMsg msg) throws Exception {
+       if (msg.match(0, new OtpErlangAtom("die"))) {
+    	   shutdown(node);
+       }
+       System.out.println("Echoing back to: " + msg.getFrom().toString());
+       this.mbox.send(msg.getFrom(), msg.getMsg());
 	}
-
-
-	private OtpErlangPid getFrom(OtpErlangTuple t) throws Exception {
-		if (t.arity() < 1) {
-			throw new Exception("cannot determine From");
-		}
-		if (! (t.elementAt(0) instanceof OtpErlangPid)) {
-			throw new Exception("cannot determine From");
-        }
-		return (OtpErlangPid) (t.elementAt(0));
-	}
-
-	/**
-	 * This is for matching a tuple element with a match spec.
-	 *
-	 * In Erlang BTW simply some "{_,B,_,_} = Tuple" or similar.
-	 *
-	 * @param t
-	 * @param pos
-	 * @param match
-	 * @return
-	 */
-	public boolean match(OtpErlangTuple t, int pos, OtpErlangObject match) {
-        if (t.arity() == pos+1 && t.elementAt(pos).getClass().getName() == match.getClass().getName()) {
-        	if (t.elementAt(pos).equals(match)) {
-        		return true;
-        	}
-        }
-		return false;
-	}
-
-
+	
+	
 	private void shutdown(OtpNode node) {
 		OtpEpmd.unPublishPort(node);
 		System.out.println("Shutting down...");
