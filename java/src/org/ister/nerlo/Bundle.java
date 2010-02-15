@@ -35,6 +35,10 @@ public class Bundle {
 		return INSTANCE;
 	}
 	
+	public long getFiberCount() {
+		return n;
+	}
+	
 	/**
 	 * Fiber will be executed n times concurrently,
 	 * where n is the number of fibers in the bundle.
@@ -42,12 +46,27 @@ public class Bundle {
 	 * @param r
 	 */
 	public ArrayList parallelCopyRun(Fiber fib) {
+
 		ArrayList<Future> l = new ArrayList<Future>(this.n);
 		for (int i = 0; i < this.n; i++) {
 			Future<Future> future = this.exec.submit((Fiber)fib.clone());
 			l.add(future);
 		}
-		return l;
+		// TODO add result class and parameterize ArrayList that way
+		ArrayList r = new ArrayList(this.n);
+        for (Future fu : l) {
+            try {
+            	r.add(fu.get());
+            } catch(ExecutionException e) {
+                System.out.println("Exception: \n" + e.toString());
+                ConcurrencyUtil.peelException(e.getCause());
+            } catch(InterruptedException e) {
+            	System.out.println("Exception: \n" + e.toString());
+            	Thread.currentThread().interrupt();
+            }
+        }
+        
+		return r;
 	}
 	
 	

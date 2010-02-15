@@ -12,18 +12,19 @@ import com.ericsson.otp.erlang.*;
  * This is always a hidden node in the cluster (due to jinterface).
  *
  * We aim only to have this node available to one particular peer node
- * so it is fine to have a hidden node. Later the peer will even start
+ * so it is fine to have a hidden node. Usually, the peer will even start
  * this node.
  *
- * @author ingo
+ * Once started you may control this node from an Erlang shell node.
  *
  * <pre>
  * $ erl -sname shell -setcookie 123456
- * (shell@host)1> {jnode, 'jnode@host'} ! {self(), 666}.
- * (shell@host)2> receive Any -> Any end.
+ * (shell@host)1> {jnode, 'jnode@host'} ! {self(), {666}}.
  * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {job}}.
  * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {die}}.
  * </pre>
+ *
+ * @author ingo 
  */
 public class JNode {
 
@@ -41,9 +42,8 @@ public class JNode {
 	/**
 	 *
 	 */
-	public JNode() throws Exception{
-		this.node = this.getNode();
-		this.bundle = Bundle.getInstance();
+	public JNode() throws IOException{
+		this.init();
 	}
 
 	/**
@@ -52,13 +52,12 @@ public class JNode {
 	 * @param name
 	 * @param peer
 	 */
-	public JNode(String cookie, String name, String peer) throws Exception {
+	public JNode(String cookie, String name, String peer) throws IOException {
 		this.cookie   = cookie;
 		this.nodename = name;
 		this.mboxname = name;
 		this.peername = peer;
-		this.node = this.getNode();
-		this.bundle = Bundle.getInstance();
+		this.init();
 	}
 
 	/**
@@ -79,7 +78,6 @@ public class JNode {
             try {
                 OtpErlangObject o = this.mbox.receive();
                 if (o instanceof OtpErlangTuple) {
-                	System.out.println("got tuple: " + o.toString());
                 	JMsg msg = new JMsg((OtpErlangTuple) o);
                 	processMsg(msg);
                 } else {
@@ -108,22 +106,17 @@ public class JNode {
         } else if (msg.match(0, new OtpErlangAtom("job"))) {
             job();
         } else {
-            System.out.println("Echoing back to: " + msg.getFrom().toString());
-            this.mbox.send(msg.getFrom(), msg.getMsg());
+            System.out.println("Received from " + msg.getFrom().toString() 
+            		+ " message: " + msg.getMsg().toString());
+//            this.mbox.send(msg.getFrom(), msg.getMsg());
         }
     }
     
     
     public void job() {
-        ArrayList<Future<Long>> l = bundle.parallelCopyRun(new SimpleFiber());
-        for (Future<Long> fu : l) {
-            try {
-                System.out.println("Future returned: " + fu.get().toString());
-            } catch(ExecutionException e) {
-                System.out.println("Exception: \n" + e.toString());
-            } catch(InterruptedException e) {
-                System.out.println("Exception: \n" + e.toString());
-            }
+        ArrayList<Long> l = bundle.parallelCopyRun(new SimpleFiber());
+        for (Long res : l) {
+            System.out.println("Future returned: " + res);
         }
     }
     
@@ -135,8 +128,14 @@ public class JNode {
         System.out.println("bye");
         System.exit(0);
     }
+    
+    private void init() throws IOException {
+		this.node = this.getNode();
+		this.bundle = Bundle.getInstance();
+		System.out.println("Bundle has " + this.bundle.getFiberCount() + " fibers");
+    }
 
-    private OtpNode getNode() throws Exception {
+    private OtpNode getNode() throws IOException {
         try {
             OtpNode node = new OtpNode(this.nodename, this.cookie);
             System.out.println("node running: " + this.nodename);
