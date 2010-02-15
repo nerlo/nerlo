@@ -35,12 +35,15 @@ public class JNode {
 
 	private OtpNode node = null;
 	private OtpMbox mbox = null;
+	
+	private Bundle bundle;
 
 	/**
 	 *
 	 */
 	public JNode() throws Exception{
 		this.node = this.getNode();
+		this.bundle = Bundle.getInstance();
 	}
 
 	/**
@@ -55,6 +58,7 @@ public class JNode {
 		this.mboxname = name;
 		this.peername = peer;
 		this.node = this.getNode();
+		this.bundle = Bundle.getInstance();
 	}
 
 	/**
@@ -74,7 +78,6 @@ public class JNode {
         while (true) {
             try {
                 OtpErlangObject o = this.mbox.receive();
-                System.out.println("Received something from somewehere.");
                 if (o instanceof OtpErlangTuple) {
                 	System.out.println("got tuple: " + o.toString());
                 	JMsg msg = new JMsg((OtpErlangTuple) o);
@@ -110,8 +113,7 @@ public class JNode {
 	
 	
 	public void job() {
-		Bundle b = Bundle.getInstance();
-		ArrayList<Future<Long>> l = b.parallelCopyRun(new SimpleFiber());
+		ArrayList<Future<Long>> l = bundle.parallelCopyRun(new SimpleFiber());
 		for (Future<Long> fu : l) {
 			try {
 				System.out.println("Future returned: " + fu.get().toString());
@@ -125,8 +127,10 @@ public class JNode {
 	
 	
 	private void shutdown(OtpNode node) {
+		System.out.print("Shutting down...");
+		this.bundle.shutdown();
 		OtpEpmd.unPublishPort(node);
-		System.out.println("Shutting down...");
+		System.out.println("bye");
 		System.exit(0);
 	}
 

@@ -24,7 +24,7 @@ public class SimpleFiber implements Fiber {
 			try {
 				long wait = Math.round(Math.random() * 100);
 				Thread.sleep(wait);
-				System.out.println("awake: " + id + "(" + wait + ")");
+				System.out.println(id + " awake after " + wait + "ms");
 			} catch(InterruptedException e) {
 				
 			}
