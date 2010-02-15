@@ -55,8 +55,7 @@ public class Bundle {
 	private int getN() {
 		// later we may add a more sophisticated
 		// computation here
-		//return Runtime.getRuntime().availableProcessors();
-		return 5;
+		return Runtime.getRuntime().availableProcessors();
 	}
 
 }
