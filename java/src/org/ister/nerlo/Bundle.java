@@ -58,13 +58,13 @@ public class Bundle {
 	
 	public void kill() {
 		this.exec.shutdownNow();
-	}
-	
-	
-	private int getN() {
-		// later we may add a more sophisticated
-		// computation here
-		return Runtime.getRuntime().availableProcessors();
-	}
+    }
+    
+    
+    private int getN() {
+        // later we may add a more sophisticated
+        // computation here
+        return Runtime.getRuntime().availableProcessors();
+    }
 
 }

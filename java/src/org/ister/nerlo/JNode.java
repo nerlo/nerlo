@@ -100,58 +100,60 @@ public class JNode {
         }
     }
 	
-	public void processMsg(JMsg msg) throws Exception {
-       if (msg.match(0, new OtpErlangAtom("die"))) {
-    	   shutdown(node);
-       } else if (msg.match(0, new OtpErlangAtom("job"))) {
-    	   job();
-       } else {
-    	   System.out.println("Echoing back to: " + msg.getFrom().toString());
-    	   this.mbox.send(msg.getFrom(), msg.getMsg());
-       }
-	}
-	
-	
-	public void job() {
-		ArrayList<Future<Long>> l = bundle.parallelCopyRun(new SimpleFiber());
-		for (Future<Long> fu : l) {
-			try {
-				System.out.println("Future returned: " + fu.get().toString());
-			} catch(ExecutionException e) {
-				System.out.println("Exception: \n" + e.toString());
-			} catch(InterruptedException e) {
-				System.out.println("Exception: \n" + e.toString());
-			}
-		}
-	}
-	
-	
-	private void shutdown(OtpNode node) {
-		System.out.print("Shutting down...");
-		this.bundle.shutdown();
-		OtpEpmd.unPublishPort(node);
-		System.out.println("bye");
-		System.exit(0);
-	}
-
-	private OtpNode getNode() throws Exception {
-    	try {
-    		OtpNode node = new OtpNode(this.nodename, this.cookie);
-    		System.out.println("node running: " + this.nodename);
-    		if (OtpEpmd.publishPort(node)) {
-    			System.out.println("Node registered");
-    		} else {
-    			System.out.println("Warning: Node registration failed");
-    		}
-    		String[] names = OtpEpmd.lookupNames();
-    		for (String name: names) {
-    			System.out.println(name);
-    		}
-    		this.mbox = node.createMbox(this.mboxname);
-    		return node;
-	    } catch (IOException e) {
-	    	System.out.println("Fatal: no node\n" + e.toString());
-	    	throw e;
+    public void processMsg(JMsg msg) throws Exception {
+    	// {self(), {die}}    
+        if (msg.match(0, new OtpErlangAtom("die"))) {
+            shutdown(node);
+        // {self(), {job}}
+        } else if (msg.match(0, new OtpErlangAtom("job"))) {
+            job();
+        } else {
+            System.out.println("Echoing back to: " + msg.getFrom().toString());
+            this.mbox.send(msg.getFrom(), msg.getMsg());
         }
-	}
+    }
+    
+    
+    public void job() {
+        ArrayList<Future<Long>> l = bundle.parallelCopyRun(new SimpleFiber());
+        for (Future<Long> fu : l) {
+            try {
+                System.out.println("Future returned: " + fu.get().toString());
+            } catch(ExecutionException e) {
+                System.out.println("Exception: \n" + e.toString());
+            } catch(InterruptedException e) {
+                System.out.println("Exception: \n" + e.toString());
+            }
+        }
+    }
+    
+    
+    private void shutdown(OtpNode node) {
+        System.out.print("Shutting down...");
+        this.bundle.shutdown();
+        OtpEpmd.unPublishPort(node);
+        System.out.println("bye");
+        System.exit(0);
+    }
+
+    private OtpNode getNode() throws Exception {
+        try {
+            OtpNode node = new OtpNode(this.nodename, this.cookie);
+            System.out.println("node running: " + this.nodename);
+            if (OtpEpmd.publishPort(node)) {
+                System.out.println("Node registered");
+            } else {
+                System.out.println("Warning: Node registration failed");
+            }
+            String[] names = OtpEpmd.lookupNames();
+            for (String name: names) {
+                System.out.println(name);
+            }
+            this.mbox = node.createMbox(this.mboxname);
+            return node;
+        } catch (IOException e) {
+            System.out.println("Fatal: no node\n" + e.toString());
+            throw e;
+        }
+    }
 }

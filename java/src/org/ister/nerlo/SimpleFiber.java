@@ -25,20 +25,20 @@ public class SimpleFiber implements Fiber {
 				long wait = Math.round(Math.random() * 100);
 				Thread.sleep(wait);
 				System.out.println(id + " awake after " + wait + "ms");
-			} catch(InterruptedException e) {
-				
-			}
-		}
-		return new Long(id);
-	}
-	
-	
-	@Override public SimpleFiber clone() {
-		try {
-			return (SimpleFiber) super.clone();
-		} catch (CloneNotSupportedException e) {
-			throw new AssertionError();
-		}
-	}
+            } catch(InterruptedException e) {
+                
+            }
+        }
+        return new Long(id);
+    }
+    
+    
+    @Override public SimpleFiber clone() {
+        try {
+            return (SimpleFiber) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
 
 }

@@ -84,25 +84,25 @@ public class JMsg implements Cloneable {
 	
 	
 	@Override public JMsg clone() {
-		try {
-			return (JMsg) super.clone();
-		} catch (CloneNotSupportedException e) {
-			throw new AssertionError();
-		}
-	}
-	
-	private OtpErlangPid getFrom(OtpErlangTuple t) throws IllegalArgumentException {
-		if (! (t.elementAt(0) instanceof OtpErlangPid)) {
-			throw new IllegalArgumentException("cannot determine From");
+        try {
+            return (JMsg) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
         }
-		return (OtpErlangPid) (t.elementAt(0));
-	}
-	
-	private OtpErlangTuple getMsg(OtpErlangTuple t) throws IllegalArgumentException {
-		if (! (t.elementAt(1) instanceof OtpErlangTuple)) {
-			throw new IllegalArgumentException("cannot determine Msg");
+    }
+    
+    private OtpErlangPid getFrom(OtpErlangTuple t) throws IllegalArgumentException {
+        if (! (t.elementAt(0) instanceof OtpErlangPid)) {
+            throw new IllegalArgumentException("cannot determine From");
         }
-		return (OtpErlangTuple) (t.elementAt(1));
-	}	
-	
+        return (OtpErlangPid) (t.elementAt(0));
+    }
+    
+    private OtpErlangTuple getMsg(OtpErlangTuple t) throws IllegalArgumentException {
+        if (! (t.elementAt(1) instanceof OtpErlangTuple)) {
+            throw new IllegalArgumentException("cannot determine Msg");
+        }
+        return (OtpErlangTuple) (t.elementAt(1));
+    }    
+    
 }
