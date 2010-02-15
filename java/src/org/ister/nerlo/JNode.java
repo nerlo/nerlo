@@ -23,6 +23,9 @@ import com.ericsson.otp.erlang.*;
  * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {job}}.
  * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {die}}.
  * </pre>
+ * 
+ * If this has been started canonically from within Erlang with 
+ * nerlo_jsrv:start() you may send messages using nerlo_jsrv:send(Msg).
  *
  * @author ingo 
  */
