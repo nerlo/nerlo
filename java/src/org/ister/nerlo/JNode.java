@@ -1,6 +1,11 @@
 package org.ister.nerlo;
 
 import java.io.IOException;
+
+import java.util.ArrayList;
+import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
+
 import com.ericsson.otp.erlang.*;
 
 /**
@@ -14,20 +19,22 @@ import com.ericsson.otp.erlang.*;
  *
  * <pre>
  * $ erl -sname shell -setcookie 123456
- * (shell@host)1> {echo, 'echo@host'} ! {self(), 666}.
+ * (shell@host)1> {jnode, 'jnode@host'} ! {self(), 666}.
  * (shell@host)2> receive Any -> Any end.
- * (shell@host)3> {echo, 'echo@host'} ! {self(), die}.
+ * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {job}}.
+ * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {die}}.
  * </pre>
  */
 public class JNode {
 
-	String cookie   = "123456"; // cookie of Erlang cluster
-	String nodename = "jnode";  // name of this node
-	String mboxname = "jnode";  // process registered name (globally?)
-	String peername = "shell";  // name of peer node
+	private String cookie   = "123456"; // cookie of Erlang cluster
+	private String nodename = "jnode";  // name of this node
+	private String mboxname = "jnode";  // process registered name (globally?)
+	private String peername = "shell";  // name of peer node
+	
 
-	OtpNode node = null;
-	OtpMbox mbox = null;
+	private OtpNode node = null;
+	private OtpMbox mbox = null;
 
 	/**
 	 *
@@ -56,7 +63,7 @@ public class JNode {
 	 * @throws Exception
 	 */
 	public void run() throws Exception {
-
+		
         if (node.ping(peername, 2000)) {
             System.out.println(peername + ": pong.");
         } else {
@@ -93,9 +100,27 @@ public class JNode {
 	public void processMsg(JMsg msg) throws Exception {
        if (msg.match(0, new OtpErlangAtom("die"))) {
     	   shutdown(node);
+       } else if (msg.match(0, new OtpErlangAtom("job"))) {
+    	   job();
+       } else {
+    	   System.out.println("Echoing back to: " + msg.getFrom().toString());
+    	   this.mbox.send(msg.getFrom(), msg.getMsg());
        }
-       System.out.println("Echoing back to: " + msg.getFrom().toString());
-       this.mbox.send(msg.getFrom(), msg.getMsg());
+	}
+	
+	
+	public void job() {
+		Bundle b = Bundle.getInstance();
+		ArrayList<Future<Long>> l = b.parallelCopyRun(new SimpleFiber());
+		for (Future<Long> fu : l) {
+			try {
+				System.out.println("Future returned: " + fu.get().toString());
+			} catch(ExecutionException e) {
+				System.out.println("Exception: \n" + e.toString());
+			} catch(InterruptedException e) {
+				System.out.println("Exception: \n" + e.toString());
+			}
+		}
 	}
 	
 	

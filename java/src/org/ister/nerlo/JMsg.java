@@ -4,6 +4,7 @@
 package org.ister.nerlo;
 
 import com.ericsson.otp.erlang.*;
+import java.lang.Cloneable;
 
 /**
  * A java representation of a specific Erlang message.
@@ -18,7 +19,7 @@ import com.ericsson.otp.erlang.*;
  * @author ingo
  *
  */
-public class JMsg implements java.lang.Cloneable {
+public class JMsg implements Cloneable {
 
 	private final OtpErlangPid from;
 	private final OtpErlangTuple msg;
@@ -53,14 +54,30 @@ public class JMsg implements java.lang.Cloneable {
 		return false;
 	}
 	
+	/**
+	 * Get sender Pid of this message.
+	 * 
+	 * @return
+	 */
 	public OtpErlangPid getFrom() {
 		return this.from;
 	}
 	
+	/**
+	 * Get message body of this message.
+	 * 
+	 * @return
+	 */
 	public OtpErlangTuple getMsg() {
 		return this.msg;
 	}
 	
+	/**
+	 * Tuple element at position, starting with 0.
+	 * 
+	 * @param i
+	 * @return
+	 */
 	public OtpErlangObject elementAt(int i) {
 		return this.msg.elementAt(i);
 	}
