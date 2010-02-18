@@ -1,3 +1,32 @@
-nerlo will be an Erlang bridge to the neo4j graph database
+OVERVIEW
+--------
 
-for now, you should not expect anything to work :)
+"nerlo" will be an Erlang bridge to the neo4j graph database.
+
+IMPORTANT NOTE: For now, you should not expect 
+anything to work :)
+
+
+
+DEPENDENCIES
+------------
+
+JDK >= 1.6.0
+Erlang >= R13B03
+Ant >= 1.8 (lower may work as well)
+commons-cli-1.2
+
+NOTE: Dependency management is by hand for now. Later we may
+use Ivy or Maven for Java dependencies.
+
+
+BUILD
+-----
+
+You may try to build from source like this:
+
+$ ./conf.sh
+$ cd erl && make
+$ cd java && ant
+
+
