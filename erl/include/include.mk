@@ -5,12 +5,21 @@
 
 ### edit this ###
 
-ERL_HOME=/opt/erlang/current/
-JAVA_HOME=/opt/java/sun/jdk/bin
+#ERL_HOME=/opt/erlang/current/
+#JAVA_HOME=/opt/java/sun/jdk/bin
 APPLICATION=nerlo
 TESTCOOKIE=123456
 
 #################
+
+include ../include/paths.mk
+
+ifndef ERL_HOME
+$(error ERL_HOME not defined)
+endif
+ifndef JAVA_HOME
+$(error JAVA_HOME not defined)
+endif
 
 ERL := $(ERL_HOME)/bin/erl
 ERLC := $(ERL_HOME)/bin/erlc
