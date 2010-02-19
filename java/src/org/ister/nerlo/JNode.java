@@ -116,6 +116,7 @@ public class JNode {
     }
     
     
+    @SuppressWarnings("unchecked")
     public void job() {
         ArrayList<Long> l = bundle.parallelCopyRun(new SimpleFiber());
         for (Long res : l) {
