@@ -45,6 +45,7 @@ public class Bundle {
 	 * 
 	 * @param r
 	 */
+	@SuppressWarnings("unchecked")
 	public ArrayList parallelCopyRun(Fiber fib) {
 
 		ArrayList<Future> l = new ArrayList<Future>(this.n);

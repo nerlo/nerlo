@@ -30,6 +30,7 @@
 -define(PEERNAME, jnode).
 -define(PEERSTR, atom_to_list(?PEERNAME)).
 -define(NERLOMSG(Body), {self(), {Body}}).
+-define(JNODELOC, "./bin/jnode").
 
 -record(jsrv, {workers = []
               ,worker  = no
@@ -141,11 +142,12 @@ code_change(_OldVsn, S, _Extra) ->
 
 % TODO start JNode and shake hands
 handshake() ->
-    Jnode = "./bin/jnode",
-    % Args = "-peer=" ++ atom_to_list(node()),
-    Args = "",
-    erlang:open_port({spawn, Jnode ++ " " ++ Args ++ " &"},[]),
-    %---
+    Args = "-peer " ++ atom_to_list(node())
+         ++ " -sname " ++ ?PEERSTR
+         ++ " -cookie " ++ atom_to_list(erlang:get_cookie()),
+    Cmd  = ?JNODELOC ++ " " ++ Args ++ " &",
+    log:info(self(), "starting JNode: ~p", [Cmd]),
+    erlang:open_port({spawn, Cmd},[]),
     {ok, Hostname} = inet:gethostname(),
     {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)}.
 

@@ -142,7 +142,8 @@ public class JNode {
     private OtpNode getNode() throws IOException {
         try {
             OtpNode node = new OtpNode(this.nodename, this.cookie);
-            System.out.println("node running: " + this.nodename);
+            System.out.println("node running: " + this.nodename + "@" + java.net.InetAddress.getLocalHost().getHostName());
+            System.out.println("peer: " + this.peername);
             if (OtpEpmd.publishPort(node)) {
                 System.out.println("Node registered");
             } else {

@@ -13,6 +13,7 @@ DEPENDENCIES
 
 JDK >= 1.6.0
 Erlang >= R13B03
+GNU make
 Ant >= 1.8 (lower may work as well)
 commons-cli-1.2
 
@@ -28,5 +29,16 @@ You may try to build from source like this:
 $ ./conf.sh
 $ cd erl && make
 $ cd java && ant
+
+
+RUN
+---
+
+$ cd erl
+$ bin/shell
+erl 1> nerlo_jsrv:start().
+erl 2> nerlo_jsrv:stop().
+
+
 
 
