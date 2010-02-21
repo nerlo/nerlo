@@ -24,11 +24,15 @@ public class Bundle {
 	
 	private final int n;
 	private final ExecutorService exec;
+	@SuppressWarnings("unchecked")
+	private final CompletionService<Fiber> service;
 	
 	
+	@SuppressWarnings("unchecked")
 	private Bundle() {
 		this.n = getN();
 		this.exec = Executors.newFixedThreadPool(n);
+		this.service = new ExecutorCompletionService<Fiber>(this.exec);
 	}
 	
 	public static Bundle getInstance() {
@@ -48,15 +52,14 @@ public class Bundle {
 	@SuppressWarnings("unchecked")
 	public ArrayList parallelCopyRun(Fiber fib) {
 
-		ArrayList<Future> l = new ArrayList<Future>(this.n);
 		for (int i = 0; i < this.n; i++) {
-			Future<Future> future = this.exec.submit((Fiber)fib.clone());
-			l.add(future);
+			this.service.submit((Fiber)fib.clone());
 		}
 		// TODO add result class and parameterize ArrayList that way
 		ArrayList r = new ArrayList(this.n);
-        for (Future fu : l) {
+        for (int i = 0; i < this.n; i++) {
             try {
+            	Future<Fiber> fu = this.service.take();
             	r.add(fu.get());
             } catch(ExecutionException e) {
                 System.out.println("Exception: \n" + e.toString());
