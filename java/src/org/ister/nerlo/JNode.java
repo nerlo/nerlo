@@ -35,8 +35,6 @@ public class JNode {
 	private String mboxname = "jnode";  // process registered name (globally?)
 	private String peernode = "shell";  // name of peer node
 	private OtpErlangPid peerpid  = null;
-	
-	//private static String PEERNAME = "nrlo_jsrv";
 
 	private OtpNode node = null;
 	private OtpMbox mbox = null;
@@ -44,13 +42,14 @@ public class JNode {
 	private Bundle bundle;
 
 	/**
-	 *
+	 * Create with default setup.
 	 */
 	public JNode() throws IOException{
 		this.init();
 	}
 
 	/**
+	 * Create with custom setup.
 	 *
 	 * @param cookie
 	 * @param name
@@ -83,6 +82,7 @@ public class JNode {
                 OtpErlangObject o = this.mbox.receive();
                 if (o instanceof OtpErlangTuple) {
                 	JMsg msg = new JMsg((OtpErlangTuple) o);
+                	// TODO only allow messages from peer
                 	processMsg(msg);
                 } else {
                 	throw new IllegalArgumentException("Tuple expected");
@@ -101,8 +101,12 @@ public class JNode {
             }
         }
     }
+    
+    
+    /* PRIVATE */
+
 	
-    public void processMsg(JMsg msg) throws Exception {
+    private void processMsg(JMsg msg) throws Exception {
     	// {self(), {handshake}}    
         if        (msg.match(0, new OtpErlangAtom("handshake"))) {
             handshake(msg);
@@ -115,16 +119,6 @@ public class JNode {
         } else {
             System.out.println("Received from " + msg.getFrom().toString() 
             		+ " message: " + msg.getMsg().toString());
-//            this.mbox.send(msg.getFrom(), msg.getMsg());
-        }
-    }
-    
-    
-    @SuppressWarnings("unchecked")
-    public void job() {
-        List<Long> l = bundle.parallelCopyRun(new SimpleFiber());
-        for (Long res : l) {
-            System.out.println("Future returned: " + res);
         }
     }
     
@@ -144,7 +138,15 @@ public class JNode {
         System.out.println("bye");
         System.exit(0);
     }
+
     
+    @SuppressWarnings("unchecked")
+    private void job() {
+        List<Long> l = bundle.parallelCopyRun(new SimpleFiber());
+        for (Long res : l) {
+            System.out.println("Future returned: " + res);
+        }
+    }
     
     private void sendPeer(OtpErlangTuple t) {
     	JMsg msg = new JMsg(this.mbox.self(), t);

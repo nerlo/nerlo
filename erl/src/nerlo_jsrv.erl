@@ -122,13 +122,13 @@ handle_cast({'STOP'}, S) ->
     timer:send_after(500,?NERLOMSG(bye)),
     log:info(self(),"stopping with state: ~w", [S]),
     {noreply, S#jsrv{stopping=true}};
-    %{stop, normal, S};
 handle_cast(Msg,S) ->
     log:info(self(),"cannot handle cast: ~p", [Msg]),
     {noreply, S}.
 
 % @hidden
 handle_info({Pid,{handshake}},S) ->
+    % TODO only allow from peer
     log:debug(self(), "got handshake from: ~p", [Pid]),
     {noreply, S#jsrv{peer=Pid}};
 handle_info({Port,{data,"\n"}},S) when is_port(Port) ->
@@ -141,7 +141,8 @@ handle_info({From,{bye}},S) ->
         false -> 
             log:warn(self(), "ignore 'bye' while not in stopping state: ~p", [From]),
             {noreply,S};
-        true  -> 
+        true  ->
+            % TODO only allow from peer and self()
             log:info(self(), "'bye' triggered: ~p", [From]),
             {stop, normal, S}
     end;
@@ -197,13 +198,6 @@ start_stop_test() ->
     stop(),
     timer:sleep(500).
 
-%job_test() ->
-%    start(),
-%    Spec = test,
-%    {Pid1,Spec} = job(Spec),
-%    {Pid2,Spec} = job(Spec),
-%    ?assertNot(Pid1 =:= Pid2),
-%    stop().
 
 
 

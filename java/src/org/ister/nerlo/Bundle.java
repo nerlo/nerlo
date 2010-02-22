@@ -8,11 +8,11 @@ import java.util.concurrent.*;
  * called Fibers.
  * 
  * Bundles may be subsumed into higher structures such
- * as superbundles or spaces, but these do not have
+ * as sheaves or spaces, but these do not have
  * to be represented by Java classes necessarily.
  * 
  * Singleton; because we do not want two thread pools
- * for the same VM (not even for the same mashine, but
+ * for the same VM (not even for the same machine, but
  * this is left to the admins).
  * 
  * @author ingo
