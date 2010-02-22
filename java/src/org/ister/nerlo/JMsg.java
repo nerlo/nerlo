@@ -4,7 +4,6 @@
 package org.ister.nerlo;
 
 import com.ericsson.otp.erlang.*;
-import java.lang.Cloneable;
 
 /**
  * A java representation of a specific Erlang message.
@@ -19,7 +18,7 @@ import java.lang.Cloneable;
  * @author ingo
  *
  */
-public class JMsg implements Cloneable {
+public class JMsg {
 
 	private final OtpErlangPid from;
 	private final OtpErlangTuple msg;
@@ -110,16 +109,9 @@ public class JMsg implements Cloneable {
 	public OtpErlangObject elementAt(int i) {
 		return this.msg.elementAt(i);
 	}
-	
-	
-	@Override public JMsg clone() {
-        try {
-            return (JMsg) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new AssertionError();
-        }
-    }
     
+	/* PRIVATE */
+	
     private OtpErlangPid getFrom(OtpErlangTuple t) throws IllegalArgumentException {
         if (! (t.elementAt(0) instanceof OtpErlangPid)) {
             throw new IllegalArgumentException("cannot determine From");

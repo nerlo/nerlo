@@ -1,8 +1,6 @@
 package org.ister.nerlo;
 
 import java.io.IOException;
-
-import java.util.ArrayList;
 import java.util.List;
 
 import org.ister.nerlo.example.SimpleFiber;
@@ -38,7 +36,7 @@ public class JNode {
 	private String peernode = "shell";  // name of peer node
 	private OtpErlangPid peerpid  = null;
 	
-	private static String PEERNAME = "nrlo_jsrv";
+	//private static String PEERNAME = "nrlo_jsrv";
 
 	private OtpNode node = null;
 	private OtpMbox mbox = null;
@@ -179,6 +177,7 @@ public class JNode {
                 System.out.println(name);
             }
             this.mbox = node.createMbox(this.mboxname);
+            System.out.println("self: " + this.mbox.self());
             return node;
         } catch (IOException e) {
             System.out.println("Fatal: no node\n" + e.toString());
