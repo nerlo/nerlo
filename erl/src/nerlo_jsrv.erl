@@ -138,9 +138,11 @@ handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     {noreply,S};
 handle_info({From,{bye}},S) ->
     case S#jsrv.stopping of
-        false -> {noreply,S};
+        false -> 
+            log:warn(self(), "ignore 'bye' while not in stopping state: ~p", [From]),
+            {noreply,S};
         true  -> 
-            log:info(self(), "bye, triggerd from: ~p", [From]),
+            log:info(self(), "'bye' triggered: ~p", [From]),
             {stop, normal, S}
     end;
 handle_info(Msg,S) ->
@@ -190,8 +192,10 @@ shutdown(Peer,S) ->
 
 start_stop_test() ->
     {ok,Pid} = start(2,"../bin"),
+    timer:sleep(500),
     ?assert(is_pid(Pid)),
-    stop().
+    stop(),
+    timer:sleep(500).
 
 %job_test() ->
 %    start(),
