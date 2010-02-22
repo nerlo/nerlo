@@ -50,10 +50,10 @@ public class Bundle {
 	 * @param r
 	 */
 	@SuppressWarnings("unchecked")
-	public ArrayList parallelCopyRun(Fiber fib) {
+	public ArrayList parallelCopyRun(AbstractFiber fiber) {
 
 		for (int i = 0; i < this.n; i++) {
-			this.service.submit((Fiber)fib.clone());
+			this.service.submit(fiber.getCopy(fiber));
 		}
 		// TODO add result class and parameterize ArrayList that way
 		ArrayList r = new ArrayList(this.n);

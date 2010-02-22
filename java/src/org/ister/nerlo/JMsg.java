@@ -24,7 +24,23 @@ public class JMsg implements Cloneable {
 	private final OtpErlangPid from;
 	private final OtpErlangTuple msg;
 	
+	/**
+	 * Create message to send.
+	 * 
+	 * @param pid
+	 * @param tuple
+	 */
+	public JMsg(OtpErlangPid self, OtpErlangTuple tuple) {
+		this.from = self;
+		this.msg  = tuple;
+	}
 	
+	/**
+	 * Create from received message.
+	 * 
+	 * @param tuple
+	 * @throws IllegalArgumentException
+	 */
 	public JMsg(OtpErlangTuple tuple) throws IllegalArgumentException {
 		
 		if (tuple.arity() != 2) {
@@ -71,6 +87,19 @@ public class JMsg implements Cloneable {
 	public OtpErlangTuple getMsg() {
 		return this.msg;
 	}
+	
+	/**
+	 * Get message as one single tuple.
+	 * 
+	 * @return
+	 */
+	public OtpErlangTuple toTuple() {
+		OtpErlangObject[] l = new OtpErlangObject[2];
+		l[0] = this.from;
+		l[1] = this.msg;
+		return new OtpErlangTuple(l);
+	}
+	
 	
 	/**
 	 * Tuple element at position, starting with 0.

@@ -3,8 +3,9 @@ package org.ister.nerlo;
 import java.io.IOException;
 
 import java.util.ArrayList;
-import java.util.concurrent.Future;
-import java.util.concurrent.ExecutionException;
+import java.util.List;
+
+import org.ister.nerlo.example.SimpleFiber;
 
 import com.ericsson.otp.erlang.*;
 
@@ -34,8 +35,10 @@ public class JNode {
 	private String cookie   = "123456"; // cookie of Erlang cluster
 	private String nodename = "jnode";  // name of this node
 	private String mboxname = "jnode";  // process registered name (globally?)
-	private String peername = "shell";  // name of peer node
+	private String peernode = "shell";  // name of peer node
+	private OtpErlangPid peerpid  = null;
 	
+	private static String PEERNAME = "nrlo_jsrv";
 
 	private OtpNode node = null;
 	private OtpMbox mbox = null;
@@ -59,7 +62,7 @@ public class JNode {
 		this.cookie   = cookie;
 		this.nodename = name;
 		this.mboxname = name;
-		this.peername = peer;
+		this.peernode = peer;
 		this.init();
 	}
 
@@ -70,11 +73,11 @@ public class JNode {
 	 */
 	public void run() throws Exception {
 		
-        if (node.ping(peername, 2000)) {
-            System.out.println(peername + ": pong.");
+        if (node.ping(peernode, 2000)) {
+            System.out.println(peernode + ": pong.");
         } else {
         	// to die or not to die ...
-            System.out.println(peername + ": pang!");
+            System.out.println(peernode + ": pang!");
         }
 
         while (true) {
@@ -102,8 +105,11 @@ public class JNode {
     }
 	
     public void processMsg(JMsg msg) throws Exception {
+    	// {self(), {handshake}}    
+        if        (msg.match(0, new OtpErlangAtom("handshake"))) {
+            handshake(msg);
     	// {self(), {die}}    
-        if (msg.match(0, new OtpErlangAtom("die"))) {
+        } else if (msg.match(0, new OtpErlangAtom("die"))) {
             shutdown(node);
         // {self(), {job}}
         } else if (msg.match(0, new OtpErlangAtom("job"))) {
@@ -118,20 +124,39 @@ public class JNode {
     
     @SuppressWarnings("unchecked")
     public void job() {
-        ArrayList<Long> l = bundle.parallelCopyRun(new SimpleFiber());
+        List<Long> l = bundle.parallelCopyRun(new SimpleFiber());
         for (Long res : l) {
             System.out.println("Future returned: " + res);
         }
     }
     
+    private void handshake(JMsg msg) {
+    	if (this.peerpid != null) return;
+    	// dangerous; more sender checks needed
+    	this.peerpid = msg.getFrom();
+    	System.out.println("handshake from: " + this.peerpid.toString());
+    	sendPeer(new OtpErlangTuple(new OtpErlangAtom("handshake")));
+    }
     
     private void shutdown(OtpNode node) {
         System.out.print("Shutting down...");
         this.bundle.shutdown();
+        sendPeer(new OtpErlangTuple(new OtpErlangAtom("bye")));
         OtpEpmd.unPublishPort(node);
         System.out.println("bye");
         System.exit(0);
     }
+    
+    
+    private void sendPeer(OtpErlangTuple t) {
+    	JMsg msg = new JMsg(this.mbox.self(), t);
+    	if (this.peerpid == null) {
+    		System.out.println("ERROR: cannot send, have no pid of peer");
+    		return;
+    	}
+    	this.mbox.send(this.peerpid, msg.toTuple());
+    }
+    
     
     private void init() throws IOException {
 		this.node = this.getNode();
@@ -143,7 +168,7 @@ public class JNode {
         try {
             OtpNode node = new OtpNode(this.nodename, this.cookie);
             System.out.println("node running: " + this.nodename + "@" + java.net.InetAddress.getLocalHost().getHostName());
-            System.out.println("peer: " + this.peername);
+            System.out.println("peer: " + this.peernode);
             if (OtpEpmd.publishPort(node)) {
                 System.out.println("Node registered");
             } else {

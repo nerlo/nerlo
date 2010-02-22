@@ -8,7 +8,7 @@ import java.util.concurrent.*;
  *
  * @param <V>
  */
-public interface Fiber<V> extends Callable, Cloneable {
+public interface Fiber<V> extends Callable<V> {
     
-    public Object clone();
+   
 }
