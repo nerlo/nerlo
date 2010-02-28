@@ -5,11 +5,15 @@ SCRIPT_DIR="`( cd \"${SCRIPT_DIR}\" && pwd )`"
 
 . ${SCRIPT_DIR}/setup.inc
 
+cd ${SCRIPT_DIR}
+
 export ERL_HOME
 export JAVA_HOME
 
 JAVA=${JAVA_HOME}/bin/java
 JAR=${SCRIPT_DIR}/../../java/dist/nerlo.jar
 
-${JAVA} -jar ${JAR} $*
+${ERL_HOME}/bin/epmd -daemon
+
+${JAVA} -server -jar ${JAR} $*
 
