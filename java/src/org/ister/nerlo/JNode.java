@@ -30,23 +30,18 @@ import com.ericsson.otp.erlang.*;
  */
 public class JNode {
 
-	private String cookie   = "123456"; // cookie of Erlang cluster
-	private String nodename = "jnode";  // name of this node
-	private String mboxname = "jnode";  // process registered name (globally?)
-	private String peernode = "shell";  // name of peer node
-	private OtpErlangPid peerpid  = null;
-
+	private static JNode INSTANCE = null;
+	
+	private final String cookie;
+	private final String nodename;
+	private final String mboxname;
+	private final String peernode;
+	
 	private OtpNode node = null;
 	private OtpMbox mbox = null;
 	
+	private OtpErlangPid peerpid  = null;
 	private Bundle bundle;
-
-	/**
-	 * Create with default setup.
-	 */
-	public JNode() throws IOException{
-		this.init();
-	}
 
 	/**
 	 * Create with custom setup.
@@ -55,12 +50,28 @@ public class JNode {
 	 * @param name
 	 * @param peer
 	 */
-	public JNode(String cookie, String name, String peer) throws IOException {
+	private JNode(String cookie, String name, String peer) throws IOException {
 		this.cookie   = cookie;
 		this.nodename = name;
 		this.mboxname = name;
 		this.peernode = peer;
 		this.init();
+	}
+	
+	/**
+	 * Get instance.
+	 * 
+	 * @param cookie
+	 * @param name
+	 * @param peer
+	 * @return
+	 * @throws IOException
+	 */
+	public static JNode getInstance(String cookie, String name, String peer)  throws IOException {
+		if (INSTANCE == null) {
+			INSTANCE = new JNode(cookie, name, peer);
+		}
+		return INSTANCE;
 	}
 
 	/**
