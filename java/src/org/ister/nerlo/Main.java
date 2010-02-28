@@ -42,7 +42,7 @@ public class Main {
 	 */
 	public void run() throws Exception {
 	    parseOptions(this.args);
-	    PROPERTIES = initProps(this.propf);
+	    initProps(this.propf);
         NODE = JNode.getInstance(cookie, sname, peer);
         NODE.run();		
 	}
@@ -119,16 +119,15 @@ public class Main {
 	    return options;
 	}
 	
-	private Properties initProps(String path) throws IOException {
-		Properties ps = new Properties();
+	private void initProps(String path) throws IOException {
+		Properties PROPERTIES = new Properties();
 		try {
 			FileInputStream stream = new FileInputStream(path);
-			ps.load(stream);
+			PROPERTIES.load(stream);
 			stream.close();
 		} catch (FileNotFoundException e) {
 			System.out.println("ERROR: properties file not found at " + path);
 		}
-		return ps;
 	}
 	
 	/**
@@ -143,11 +142,17 @@ public class Main {
 		return NODE;
 	}
 	
-	public static Properties getProperties() throws IllegalStateException {
+	/**
+	 * 
+	 * @param key
+	 * @param def
+	 * @return
+	 */
+	public static String getProperty(String key, String def) {
 		if (PROPERTIES == null) {
 			throw new IllegalStateException("Properties not initialized");
 		}
-		return PROPERTIES;
+		return PROPERTIES.getProperty(key, def);		
 	}
 	
 	/* MAIN */
