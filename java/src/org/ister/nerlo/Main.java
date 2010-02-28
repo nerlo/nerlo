@@ -1,5 +1,11 @@
 package org.ister.nerlo;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Properties;
+
 import org.apache.commons.cli.*;
 
 /**
@@ -12,9 +18,15 @@ import org.apache.commons.cli.*;
 public class Main {
 
 	private final String[] args;
+	private final String pwd = System.getProperty("user.dir");
+	
 	private String sname  = "jnode";
 	private String cookie = "123456";
 	private String peer   = "shell";
+	private String propf  = pwd + "/properties";
+	
+	private static JNode NODE = null;
+	private static Properties PROPERTIES = null;
 	
 	private static final String VERSION = "0.0.1-alpha";
 	private static final String NAME = "nerlo";
@@ -30,8 +42,9 @@ public class Main {
 	 */
 	public void run() throws Exception {
 	    parseOptions(this.args);
-        JNode node = new JNode(cookie, sname, peer);
-        node.run();		
+	    PROPERTIES = initProps(this.propf);
+        NODE = JNode.getInstance(cookie, sname, peer);
+        NODE.run();		
 	}
 	
 	private void parseOptions(String[] args) {
@@ -65,6 +78,9 @@ public class Main {
         if (line.hasOption("peer")) {
             this.peer = line.getOptionValue("peer");
         }
+        if (line.hasOption("ps")) {
+            this.propf = line.getOptionValue("ps");
+        }
 	}
 	
 	private void printBanner() {
@@ -88,6 +104,10 @@ public class Main {
                     .hasArg()
                     .withDescription("give short name of Erlang node")
                     .create("peer");
+	    Option propf = OptionBuilder.withArgName("properties")
+        			.hasArg()
+			        .withDescription("give path to properties file")
+			        .create("ps");
 	    
 	    Options options = new Options();
 	    options.addOption(help);
@@ -95,7 +115,39 @@ public class Main {
 	    options.addOption(sname);
 	    options.addOption(cookie);
 	    options.addOption(peer);
+	    options.addOption(propf);
 	    return options;
+	}
+	
+	private Properties initProps(String path) throws IOException {
+		Properties ps = new Properties();
+		try {
+			FileInputStream stream = new FileInputStream(path);
+			ps.load(stream);
+			stream.close();
+		} catch (FileNotFoundException e) {
+			System.out.println("ERROR: properties file not found at " + path);
+		}
+		return ps;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 * @throws IllegalStateException
+	 */
+	public static JNode getJNode() throws IllegalStateException {
+		if (NODE == null) {
+			throw new IllegalStateException("JNode not initialized");
+		}
+		return NODE;
+	}
+	
+	public static Properties getProperties() throws IllegalStateException {
+		if (PROPERTIES == null) {
+			throw new IllegalStateException("Properties not initialized");
+		}
+		return PROPERTIES;
 	}
 	
 	/* MAIN */
