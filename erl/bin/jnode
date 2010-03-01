@@ -2,10 +2,9 @@
 
 SCRIPT_DIR="`dirname \"${0}\"`"
 SCRIPT_DIR="`( cd \"${SCRIPT_DIR}\" && pwd )`"
-
-. ${SCRIPT_DIR}/setup.inc
-
 cd ${SCRIPT_DIR}
+
+. ./setup.inc
 
 export ERL_HOME
 export JAVA_HOME

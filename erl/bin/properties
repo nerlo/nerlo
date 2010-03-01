@@ -1,0 +1,22 @@
+# jnode properties
+
+# setting cookie here will *always* overwrite other settings
+# jnode.cookie=123456
+
+# log4j properties
+log4j.rootLogger=debug, R
+
+# log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+# log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+# log4j.appender.stdout.layout.ConversionPattern=%d [%t] %-5p - %m%n
+
+log4j.appender.R=org.apache.log4j.RollingFileAppender
+log4j.appender.R.File=../log/jnode.log
+log4j.appender.R.layout=org.apache.log4j.PatternLayout
+log4j.appender.R.layout.ConversionPattern=%d [%t] %-5p - %m%n
+log4j.appender.R.MaxFileSize=100KB
+log4j.appender.R.MaxBackupIndex=1
+
+
+
+

@@ -3,6 +3,8 @@ package org.ister.nerlo;
 import java.util.ArrayList;
 import java.util.concurrent.*;
 
+import org.apache.log4j.Logger;
+
 /**
  * A bundle subsumes a number of computational threads
  * called Fibers.
@@ -23,6 +25,7 @@ public class Bundle {
 	private static final Bundle INSTANCE = new Bundle();
 	
 	private final int n;
+	private final Logger log;
 	private final ExecutorService exec;
 	@SuppressWarnings("unchecked")
 	private final CompletionService<Fiber> service;
@@ -31,6 +34,7 @@ public class Bundle {
 	@SuppressWarnings("unchecked")
 	private Bundle() {
 		this.n = getN();
+		this.log = Main.getLogger();
 		this.exec = Executors.newFixedThreadPool(n);
 		this.service = new ExecutorCompletionService<Fiber>(this.exec);
 	}
@@ -62,10 +66,10 @@ public class Bundle {
             	Future<Fiber> fu = this.service.take();
             	r.add(fu.get());
             } catch(ExecutionException e) {
-                System.out.println("Exception: \n" + e.toString());
+                log.error("Exception: \n" + e.toString());
                 ConcurrencyUtil.peelException(e.getCause());
             } catch(InterruptedException e) {
-            	System.out.println("Exception: \n" + e.toString());
+            	log.error("Exception: \n" + e.toString());
             	Thread.currentThread().interrupt();
             }
         }

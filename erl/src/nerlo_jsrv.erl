@@ -30,7 +30,7 @@
 -define(PEERNAME, jnode).
 -define(PEERSTR, atom_to_list(?PEERNAME)).
 -define(NERLOMSG(Body), {self(), {Body}}).
--define(BINDIR, "./bin").
+-define(BINDIR, "./").
 -define(JNODEBIN, "jnode").
 
 -record(jsrv, {workers = []

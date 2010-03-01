@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.Properties;
 
 import org.apache.commons.cli.*;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 
 /**
  * Main class.
@@ -31,6 +33,8 @@ public class Main {
 	private static final String VERSION = "0.0.1-alpha";
 	private static final String NAME = "nerlo";
 	
+	private static final Logger LOG = Logger.getRootLogger();
+	
 	private Main(String[] args) {
 		this.args = args;
 	}
@@ -43,7 +47,8 @@ public class Main {
 	public void run() throws Exception {
 	    parseOptions(this.args);
 	    initProps(this.propf);
-        NODE = JNode.getInstance(cookie, sname, peer);
+	    LOG.info("---- Main initialized");
+        NODE = JNode.getInstance(sname, peer, PROPERTIES);
         NODE.run();		
 	}
 	
@@ -120,13 +125,18 @@ public class Main {
 	}
 	
 	private void initProps(String path) throws IOException {
-		Properties PROPERTIES = new Properties();
+		PROPERTIES = new Properties();
 		try {
 			FileInputStream stream = new FileInputStream(path);
 			PROPERTIES.load(stream);
+			PropertyConfigurator.configure(PROPERTIES);
 			stream.close();
 		} catch (FileNotFoundException e) {
 			System.out.println("ERROR: properties file not found at " + path);
+		} finally {
+			if (PROPERTIES.getProperty("jnode.cookie") == null) {
+				PROPERTIES.setProperty("jnode.cookie", this.cookie);
+			}			
 		}
 	}
 	
@@ -154,6 +164,16 @@ public class Main {
 		}
 		return PROPERTIES.getProperty(key, def);		
 	}
+	
+    
+    /**
+     * Get the application logger.
+     * 
+     * @return
+     */
+    public static Logger getLogger() {
+    	return LOG;
+    }
 	
 	/* MAIN */
 	

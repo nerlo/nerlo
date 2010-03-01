@@ -3,6 +3,9 @@
  */
 package org.ister.nerlo;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.ericsson.otp.erlang.*;
 
 /**
@@ -85,6 +88,24 @@ public class JMsg {
 	 */
 	public OtpErlangTuple getMsg() {
 		return this.msg;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public Map<String, Object> msgToMap() throws IllegalArgumentException {
+		HashMap<String, Object> map = new HashMap<String, Object>(0);
+		
+		return map;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public void msgFromMap(Map<String, Object> map) throws IllegalArgumentException {
+		 
 	}
 	
 	/**
