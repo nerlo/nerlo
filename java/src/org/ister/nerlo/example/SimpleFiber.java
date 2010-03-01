@@ -22,7 +22,7 @@ public class SimpleFiber extends AbstractFiber<Long> {
 	public SimpleFiber() {
 		super();
 		this.log = Main.getLogger();
-		this.log.debug("SimpleFiber instantiated in thread " + Thread.currentThread().getId());
+		this.log.debug("SimpleFiber instantiated");
 	}
 	
 	/**
@@ -35,7 +35,7 @@ public class SimpleFiber extends AbstractFiber<Long> {
 	 */
 	public Long call() {
 		long id = Thread.currentThread().getId();
-		log.debug("call in thread " + id);
+		log.debug("call");
 		for (int i = 0; i < 10; i++) {
 			try {
 				long wait = Math.round(Math.random() * 100);
@@ -45,6 +45,7 @@ public class SimpleFiber extends AbstractFiber<Long> {
                 
             }
         }
+		log.debug("call has " + id);
         return new Long(id);
     }
 	

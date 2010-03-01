@@ -33,8 +33,8 @@ public class JMsg {
 	 * @param tuple
 	 */
 	public JMsg(OtpErlangPid self, OtpErlangTuple tuple) {
-		this.from = self;
-		this.msg  = tuple;
+		this.from = (OtpErlangPid) self.clone();
+		this.msg  = (OtpErlangTuple) tuple.clone();
 	}
 	
 	/**
@@ -93,19 +93,37 @@ public class JMsg {
 	/**
 	 * 
 	 * @return
+	 * @throws IllegalArgumentException
 	 */
-	public Map<String, Object> msgToMap() throws IllegalArgumentException {
-		HashMap<String, Object> map = new HashMap<String, Object>(0);
-		
-		return map;
+	public ErlangMsgTag getTag() throws IllegalArgumentException {
+		OtpErlangObject o = this.msg.elementAt(0);
+		if (o instanceof OtpErlangAtom) {
+			return new ErlangMsgTag(((OtpErlangAtom) o).atomValue());
+		}
+		throw new IllegalArgumentException("message not properly tagged: " + this.msg.toString());
 	}
 	
 	/**
 	 * 
 	 * @return
 	 */
-	public void msgFromMap(Map<String, Object> map) throws IllegalArgumentException {
-		 
+	public Map<String, Object> msgToMap() throws IllegalArgumentException {
+		ErlangTransformer trans = new ErlangTransformer();
+		int arity = this.msg.arity();
+		HashMap<String, Object> map = new HashMap<String, Object>(arity-1);
+		for (int i=1; i <= arity; i++) {
+			OtpErlangObject t = this.msg.elementAt(i);
+			if (! (t instanceof OtpErlangTuple)) {
+				throw new IllegalArgumentException("malformed message, not a tuple at " + i + ": " + this.msg.toString());
+			}
+			if (((OtpErlangTuple) t).arity() != 2) {
+				throw new IllegalArgumentException("malformed message part at " + i + ": " + this.msg.toString());
+			}
+			String key = ((OtpErlangAtom) ((OtpErlangTuple) t).elementAt(0)).atomValue();
+			Object val = trans.toJava(((OtpErlangTuple) t).elementAt(1));
+			map.put(key, val);
+		}
+		return map;
 	}
 	
 	/**
@@ -130,6 +148,31 @@ public class JMsg {
 	public OtpErlangObject elementAt(int i) {
 		return this.msg.elementAt(i);
 	}
+	
+	/**
+	 * Factory method to create an immutable JMsg from a HashMap.
+	 * 
+	 * @param map
+	 * @param tagstr
+	 * @return
+	 */
+	public static JMsg factory(Map<String, Object> map, ErlangMsgTag msgtag) {
+		ErlangTransformer trans = new ErlangTransformer();
+		OtpErlangObject[] ts = new OtpErlangObject[map.size()+1];
+		int i = 0;
+		ts[i++] = msgtag.toAtom();
+		for (String key : map.keySet()) {
+			OtpErlangObject[] l = new OtpErlangObject[2];
+			l[0] = new OtpErlangAtom(key);
+			l[1] = trans.fromJava(map.get(key));
+			OtpErlangTuple t = new OtpErlangTuple(l);
+			ts[i++] = t;
+		}
+		OtpErlangTuple msg = new OtpErlangTuple(ts);
+		OtpErlangPid self = JNode.getInstance().getSelf();
+		return new JMsg(self, msg);
+	}
+	
     
 	/* PRIVATE */
 	
@@ -145,6 +188,9 @@ public class JMsg {
             throw new IllegalArgumentException("cannot determine Msg");
         }
         return (OtpErlangTuple) (t.elementAt(1));
-    }    
+    }
+    
+
     
 }
+

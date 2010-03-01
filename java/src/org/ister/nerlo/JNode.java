@@ -1,7 +1,9 @@
 package org.ister.nerlo;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.log4j.Logger;
@@ -79,6 +81,13 @@ public class JNode {
 		}
 		return INSTANCE;
 	}
+	
+	public static JNode getInstance() throws IllegalStateException {
+		if (INSTANCE == null) {
+			throw new IllegalStateException("JNode not initialized");
+		}
+		return INSTANCE;
+	}
 
 	/**
 	 * Run server loop.
@@ -118,6 +127,14 @@ public class JNode {
             }
         }
     }
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public OtpErlangPid getSelf() {
+		return this.mbox.self();
+	}
     
     
     /* PRIVATE */
@@ -163,10 +180,23 @@ public class JNode {
         for (Long res : l) {
             log.info("Future returned: " + res);
         }
+        Map<String, Object> map = new HashMap<String, Object>(2);
+        map.put("job", "done");
+        map.put("result", l.get(0));
+        JMsg msg = JMsg.factory(map, new ErlangMsgTag(ErlangMsgTag.OK));
+        sendPeer(msg);
     }
     
     private void sendPeer(OtpErlangTuple t) {
     	JMsg msg = new JMsg(this.mbox.self(), t);
+    	if (this.peerpid == null) {
+    		log.error("cannot send, have no pid of peer");
+    		return;
+    	}
+    	this.mbox.send(this.peerpid, msg.toTuple());
+    }
+    
+    private void sendPeer(JMsg msg) {
     	if (this.peerpid == null) {
     		log.error("cannot send, have no pid of peer");
     		return;
