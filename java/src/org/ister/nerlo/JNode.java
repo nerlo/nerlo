@@ -45,6 +45,7 @@ public class JNode {
 	
 	private OtpNode node = null;
 	private OtpMbox mbox = null;
+	private OtpErlangPid self = null;
 	
 	private OtpErlangPid peerpid  = null;
 	private Bundle bundle;
@@ -106,6 +107,7 @@ public class JNode {
         while (true) {
             try {
                 OtpErlangObject o = this.mbox.receive();
+                log.debug("message received: " + o.toString());
                 if (o instanceof OtpErlangTuple) {
                 	JMsg msg = new JMsg((OtpErlangTuple) o);
                 	// TODO only allow messages from peer
@@ -141,16 +143,22 @@ public class JNode {
 
 	
     private void processMsg(JMsg msg) throws Exception {
-    	// {self(), {handshake}}    
-        if        (msg.match(0, new OtpErlangAtom("handshake"))) {
-            handshake(msg);
-    	// {self(), {die}}    
-        } else if (msg.match(0, new OtpErlangAtom("die"))) {
-            shutdown(node);
-        // {self(), {job}}
-        } else if (msg.match(0, new OtpErlangAtom("job"))) {
-            job();
-        } else {
+    	ErlangMsgTag tag = msg.getTag();
+    	if (tag.equals(ErlangMsgTag.CALL)) {
+	    	// {self(), {call, {call, handshake}}}    
+	        //if        (msg.match(0, new OtpErlangAtom("handshake"))) {
+    		if        (msg.match("call", "handshake")) {
+	            handshake(msg);
+	    	// {self(), {call, {call, die}}}    
+	        //} else if (msg.match(0, new OtpErlangAtom("die"))) {
+    		} else if (msg.match("call", "die")) {
+	            shutdown(node);
+	        // {self(), {call, {call, job}}}
+	        //} else if (msg.match(0, new OtpErlangAtom("job"))) {
+    		} else if (msg.match("call", "job")) {
+	            job();
+	        } 
+    	} else {
             log.debug("Received from " + msg.getFrom().toString() 
             		+ " message: " + msg.getMsg().toString());
         }
@@ -161,16 +169,33 @@ public class JNode {
     	// dangerous; more sender checks needed
     	this.peerpid = msg.getFrom();
     	log.info("handshake from: " + this.peerpid.toString());
-    	sendPeer(new OtpErlangTuple(new OtpErlangAtom("handshake")));
+//    	sendPeer(new OtpErlangTuple(new OtpErlangAtom("handshake")));
+    	try {
+	    	Map<String, Object> map = new HashMap<String, Object>(2);
+	        map.put("call", "handshake");
+	        JMsg answer = JMsg.factory(this.self, new ErlangMsgTag(ErlangMsgTag.OK), map);
+	        sendPeer(answer);
+    	} catch (Exception e) {
+    		log.error("sending message failed in handshake: " + e.toString());
+    	}
     }
     
     private void shutdown(OtpNode node) {
         log.info("Shutting down...");
         this.bundle.shutdown();
-        sendPeer(new OtpErlangTuple(new OtpErlangAtom("bye")));
-        OtpEpmd.unPublishPort(node);
-        log.info("...bye");
-        System.exit(0);
+        //sendPeer(new OtpErlangTuple(new OtpErlangAtom("bye")));
+        try {
+	    	Map<String, Object> map = new HashMap<String, Object>(2);
+	        map.put("call", "bye");
+	        JMsg answer = JMsg.factory(this.self, new ErlangMsgTag(ErlangMsgTag.OK), map);
+	        sendPeer(answer);
+        } catch (Exception e) {
+    		log.error("sending message failed in shutdown: " + e.toString());
+    	} finally {
+	        OtpEpmd.unPublishPort(node);
+	        log.info("...bye");
+	        System.exit(0);
+    	}
     }
 
     
@@ -182,8 +207,8 @@ public class JNode {
         }
         Map<String, Object> map = new HashMap<String, Object>(2);
         map.put("job", "done");
-        map.put("result", l.get(0));
-        JMsg msg = JMsg.factory(map, new ErlangMsgTag(ErlangMsgTag.OK));
+        map.put("result", l.toString());
+        JMsg msg = JMsg.factory(this.self, new ErlangMsgTag(ErlangMsgTag.OK), map);
         sendPeer(msg);
     }
     
@@ -219,7 +244,8 @@ public class JNode {
                 log.debug(name);
             }
             this.mbox = node.createMbox(this.mboxname);
-            log.debug("self: " + this.mbox.self());
+            this.self = this.mbox.self();
+            log.debug("self: " + this.self.toString());
             return node;
         } catch (IOException e) {
             log.fatal("no node\n" + e.toString());

@@ -15,6 +15,7 @@ public class ErlangMsgTag {
 	public static final String OK = "ok";
 	public static final String ERROR = "error";
 	public static final String DATA = "data";
+	public static final String CALL = "call";
 	
 	/**
 	 * 
@@ -22,7 +23,7 @@ public class ErlangMsgTag {
 	 * @throws IllegalArgumentException
 	 */
 	public ErlangMsgTag(String tag) throws IllegalArgumentException {
-		if (!(tag.equals(OK) || tag.equals(ERROR) || tag.equals(DATA))) {
+		if (!(tag.equals(OK) || tag.equals(ERROR) || tag.equals(DATA) || tag.equals(CALL))) {
 			throw new IllegalArgumentException("tag not allowed: " + tag);
 		}
 		this.tag = tag;

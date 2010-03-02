@@ -4,6 +4,7 @@
 package org.ister.nerlo;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import com.ericsson.otp.erlang.*;
@@ -25,6 +26,7 @@ public class JMsg {
 
 	private final OtpErlangPid from;
 	private final OtpErlangTuple msg;
+	private final Map<String, Object> map;
 	
 	/**
 	 * Create message to send.
@@ -35,6 +37,7 @@ public class JMsg {
 	public JMsg(OtpErlangPid self, OtpErlangTuple tuple) {
 		this.from = (OtpErlangPid) self.clone();
 		this.msg  = (OtpErlangTuple) tuple.clone();
+		this.map  = msgToMap();
 	}
 	
 	/**
@@ -51,7 +54,7 @@ public class JMsg {
 		OtpErlangTuple t = (OtpErlangTuple) tuple.clone();
 		this.from = getFrom(t);
 		this.msg  = getMsg(t);
-		
+		this.map  = msgToMap();
 	}
 	
 	
@@ -70,6 +73,14 @@ public class JMsg {
         	}
         }
 		return false;
+	}
+	
+	
+	public boolean match(String key, Object value) {
+		if (!map.containsKey(key)) {
+			return false;
+		}
+		return value.equals(map.get(key));
 	}
 	
 	/**
@@ -109,15 +120,22 @@ public class JMsg {
 	 */
 	public Map<String, Object> msgToMap() throws IllegalArgumentException {
 		ErlangTransformer trans = new ErlangTransformer();
-		int arity = this.msg.arity();
-		HashMap<String, Object> map = new HashMap<String, Object>(arity-1);
-		for (int i=1; i <= arity; i++) {
-			OtpErlangObject t = this.msg.elementAt(i);
+		if (this.msg.arity() != 2) {
+			throw new IllegalArgumentException("malformed message: wrong arity");
+		}
+		OtpErlangObject list = this.msg.elementAt(1);
+		if (! (list instanceof OtpErlangList)) {
+			throw new IllegalArgumentException("malformed message, not a list at position 1");
+		}
+		int arity = ((OtpErlangList) list).arity();
+
+		HashMap<String, Object> map = new HashMap<String, Object>(arity);
+		for (OtpErlangObject t : ((OtpErlangList) list).elements()) {
 			if (! (t instanceof OtpErlangTuple)) {
-				throw new IllegalArgumentException("malformed message, not a tuple at " + i + ": " + this.msg.toString());
+				throw new IllegalArgumentException("malformed message part: not a tuple");
 			}
 			if (((OtpErlangTuple) t).arity() != 2) {
-				throw new IllegalArgumentException("malformed message part at " + i + ": " + this.msg.toString());
+				throw new IllegalArgumentException("malformed message part: wrong tuple arity");
 			}
 			String key = ((OtpErlangAtom) ((OtpErlangTuple) t).elementAt(0)).atomValue();
 			Object val = trans.toJava(((OtpErlangTuple) t).elementAt(1));
@@ -156,11 +174,11 @@ public class JMsg {
 	 * @param tagstr
 	 * @return
 	 */
-	public static JMsg factory(Map<String, Object> map, ErlangMsgTag msgtag) {
+	public static JMsg factory(OtpErlangPid self, ErlangMsgTag msgtag, Map<String, Object> map) {
 		ErlangTransformer trans = new ErlangTransformer();
-		OtpErlangObject[] ts = new OtpErlangObject[map.size()+1];
+		
+		OtpErlangObject[] ts = new OtpErlangObject[map.size()];
 		int i = 0;
-		ts[i++] = msgtag.toAtom();
 		for (String key : map.keySet()) {
 			OtpErlangObject[] l = new OtpErlangObject[2];
 			l[0] = new OtpErlangAtom(key);
@@ -168,8 +186,12 @@ public class JMsg {
 			OtpErlangTuple t = new OtpErlangTuple(l);
 			ts[i++] = t;
 		}
-		OtpErlangTuple msg = new OtpErlangTuple(ts);
-		OtpErlangPid self = JNode.getInstance().getSelf();
+		OtpErlangList list = new OtpErlangList(ts);
+		
+		OtpErlangObject[] tl = new OtpErlangObject[2];
+		tl[0] = msgtag.toAtom();
+		tl[1] = list;
+		OtpErlangTuple msg = new OtpErlangTuple(tl);
 		return new JMsg(self, msg);
 	}
 	
