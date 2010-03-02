@@ -1,11 +1,12 @@
 /**
  * 
  */
-package org.ister.nerlo;
+package org.ister.ej;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+
 
 import com.ericsson.otp.erlang.*;
 
@@ -22,7 +23,7 @@ import com.ericsson.otp.erlang.*;
  * @author ingo
  *
  */
-public class JMsg {
+public class Msg {
 
 	private final OtpErlangPid from;
 	private final OtpErlangTuple msg;
@@ -34,7 +35,7 @@ public class JMsg {
 	 * @param pid
 	 * @param tuple
 	 */
-	public JMsg(OtpErlangPid self, OtpErlangTuple tuple) {
+	public Msg(OtpErlangPid self, OtpErlangTuple tuple) {
 		this.from = (OtpErlangPid) self.clone();
 		this.msg  = (OtpErlangTuple) tuple.clone();
 		this.map  = msgToMap();
@@ -46,7 +47,7 @@ public class JMsg {
 	 * @param tuple
 	 * @throws IllegalArgumentException
 	 */
-	public JMsg(OtpErlangTuple tuple) throws IllegalArgumentException {
+	public Msg(OtpErlangTuple tuple) throws IllegalArgumentException {
 		
 		if (tuple.arity() != 2) {
 			throw new IllegalArgumentException("cannot determine From");
@@ -106,10 +107,10 @@ public class JMsg {
 	 * @return
 	 * @throws IllegalArgumentException
 	 */
-	public ErlangMsgTag getTag() throws IllegalArgumentException {
+	public MsgTag getTag() throws IllegalArgumentException {
 		OtpErlangObject o = this.msg.elementAt(0);
 		if (o instanceof OtpErlangAtom) {
-			return new ErlangMsgTag(((OtpErlangAtom) o).atomValue());
+			return new MsgTag(((OtpErlangAtom) o).atomValue());
 		}
 		throw new IllegalArgumentException("message not properly tagged: " + this.msg.toString());
 	}
@@ -174,7 +175,7 @@ public class JMsg {
 	 * @param tagstr
 	 * @return
 	 */
-	public static JMsg factory(OtpErlangPid self, ErlangMsgTag msgtag, Map<String, Object> map) {
+	public static Msg factory(OtpErlangPid self, MsgTag msgtag, Map<String, Object> map) {
 		ErlangTransformer trans = new ErlangTransformer();
 		
 		OtpErlangObject[] ts = new OtpErlangObject[map.size()];
@@ -192,7 +193,7 @@ public class JMsg {
 		tl[0] = msgtag.toAtom();
 		tl[1] = list;
 		OtpErlangTuple msg = new OtpErlangTuple(tl);
-		return new JMsg(self, msg);
+		return new Msg(self, msg);
 	}
 	
     

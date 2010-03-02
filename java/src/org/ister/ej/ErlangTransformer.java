@@ -1,4 +1,4 @@
-package org.ister.nerlo;
+package org.ister.ej;
 
 import com.ericsson.otp.erlang.*;
 

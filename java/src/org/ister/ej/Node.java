@@ -1,4 +1,4 @@
-package org.ister.nerlo;
+package org.ister.ej;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -8,6 +8,7 @@ import java.util.Properties;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
+import org.ister.nerlo.Bundle;
 import org.ister.nerlo.example.SimpleFiber;
 
 import com.ericsson.otp.erlang.*;
@@ -32,9 +33,9 @@ import com.ericsson.otp.erlang.*;
  *
  * @author ingo 
  */
-public class JNode {
+public class Node {
 
-	private static JNode INSTANCE = null;
+	private static Node INSTANCE = null;
 	
 	private final String cookie;
 	private final String nodename;
@@ -56,7 +57,7 @@ public class JNode {
 	 * @param name
 	 * @param peer
 	 */
-	private JNode(String name, String peer, Properties props) throws IOException {
+	private Node(String name, String peer, Properties props) throws IOException {
 		this.cookie   = Main.getProperty("jnode.cookie", null);
 		this.log      = Main.getLogger();
 		this.nodename = name;
@@ -75,14 +76,14 @@ public class JNode {
 	 * @return
 	 * @throws IOException
 	 */
-	public static JNode getInstance(String name, String peer, Properties props)  throws IOException {
+	public static Node getInstance(String name, String peer, Properties props)  throws IOException {
 		if (INSTANCE == null) {
-			INSTANCE = new JNode(name, peer, props);
+			INSTANCE = new Node(name, peer, props);
 		}
 		return INSTANCE;
 	}
 	
-	public static JNode getInstance() throws IllegalStateException {
+	public static Node getInstance() throws IllegalStateException {
 		if (INSTANCE == null) {
 			throw new IllegalStateException("JNode not initialized");
 		}
@@ -107,7 +108,7 @@ public class JNode {
                 OtpErlangObject o = this.mbox.receive();
                 log.debug("message received: " + o.toString());
                 if (o instanceof OtpErlangTuple) {
-                	JMsg msg = new JMsg((OtpErlangTuple) o);
+                	Msg msg = new Msg((OtpErlangTuple) o);
                 	// TODO only allow messages from peer
                 	processMsg(msg);
                 } else {
@@ -140,9 +141,9 @@ public class JNode {
     /* PRIVATE */
 
 	
-    private void processMsg(JMsg msg) throws Exception {
-    	ErlangMsgTag tag = msg.getTag();
-    	if (tag.equals(ErlangMsgTag.CALL)) {
+    private void processMsg(Msg msg) throws Exception {
+    	MsgTag tag = msg.getTag();
+    	if (tag.equals(MsgTag.CALL)) {
 	    	// {self(), {call, [{call, handshake}]}}    
     		if        (msg.match("call", "handshake")) {
 	            handshake(msg);
@@ -159,7 +160,7 @@ public class JNode {
         }
     }
     
-    private void handshake(JMsg msg) {
+    private void handshake(Msg msg) {
     	if (this.peerpid != null) return;
     	// dangerous; more sender checks needed
     	this.peerpid = msg.getFrom();
@@ -167,20 +168,20 @@ public class JNode {
     	try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "handshake");
-	        JMsg answer = JMsg.factory(this.self, new ErlangMsgTag(ErlangMsgTag.OK), map);
+	        Msg answer = Msg.factory(this.self, new MsgTag(MsgTag.OK), map);
 	        sendPeer(answer);
     	} catch (Exception e) {
     		log.error("sending message failed in handshake: " + e.toString());
     	}
     }
     
-    private void shutdown(JMsg msg, OtpNode node) {
+    private void shutdown(Msg msg, OtpNode node) {
     	log.info("shutdown request from: " + msg.getFrom().toString());
         this.bundle.shutdown();
         try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "bye");
-	        JMsg answer = JMsg.factory(this.self, new ErlangMsgTag(ErlangMsgTag.OK), map);
+	        Msg answer = Msg.factory(this.self, new MsgTag(MsgTag.OK), map);
 	        sendPeer(answer);
         } catch (Exception e) {
     		log.error("sending message failed in shutdown: " + e.toString());
@@ -201,11 +202,11 @@ public class JNode {
         Map<String, Object> map = new HashMap<String, Object>(2);
         map.put("job", "done");
         map.put("result", l.toString());
-        JMsg msg = JMsg.factory(this.self, new ErlangMsgTag(ErlangMsgTag.OK), map);
+        Msg msg = Msg.factory(this.self, new MsgTag(MsgTag.OK), map);
         sendPeer(msg);
     }
     
-    private void sendPeer(JMsg msg) {
+    private void sendPeer(Msg msg) {
     	if (this.peerpid == null) {
     		log.error("cannot send, have no pid of peer");
     		return;

@@ -1,4 +1,4 @@
-package org.ister.nerlo;
+package org.ister.ej;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,7 +27,7 @@ public class Main {
 	private String peer   = "shell";
 	private String propf  = pwd + "/properties";
 	
-	private static JNode NODE = null;
+	private static Node NODE = null;
 	private static Properties PROPERTIES = null;
 	
 	private static final String VERSION = "0.0.1-alpha";
@@ -48,7 +48,7 @@ public class Main {
 	    parseOptions(this.args);
 	    initProps(this.propf);
 	    LOG.info("---- Main initialized");
-        NODE = JNode.getInstance(sname, peer, PROPERTIES);
+        NODE = Node.getInstance(sname, peer, PROPERTIES);
         NODE.run();		
 	}
 	
@@ -145,7 +145,7 @@ public class Main {
 	 * @return
 	 * @throws IllegalStateException
 	 */
-	public static JNode getJNode() throws IllegalStateException {
+	public static Node getJNode() throws IllegalStateException {
 		if (NODE == null) {
 			throw new IllegalStateException("JNode not initialized");
 		}

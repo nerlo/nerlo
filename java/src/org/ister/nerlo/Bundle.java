@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.concurrent.*;
 
 import org.apache.log4j.Logger;
+import org.ister.ej.Main;
 
 /**
  * A bundle subsumes a number of computational threads

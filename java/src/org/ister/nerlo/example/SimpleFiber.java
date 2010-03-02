@@ -3,9 +3,9 @@ package org.ister.nerlo.example;
 import java.lang.InterruptedException;
 
 import org.apache.log4j.Logger;
+import org.ister.ej.Main;
 import org.ister.nerlo.Fiber;
 import org.ister.nerlo.AbstractFiber;
-import org.ister.nerlo.Main;
 
 /**
  * Really simple fiber.

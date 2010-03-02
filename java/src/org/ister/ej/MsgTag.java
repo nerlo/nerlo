@@ -1,4 +1,4 @@
-package org.ister.nerlo;
+package org.ister.ej;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
 
@@ -8,7 +8,7 @@ import com.ericsson.otp.erlang.OtpErlangAtom;
  * @author ingo
  *
  */
-public class ErlangMsgTag {
+public class MsgTag {
 	
 	private final String tag;
 	
@@ -22,7 +22,7 @@ public class ErlangMsgTag {
 	 * @param tag
 	 * @throws IllegalArgumentException
 	 */
-	public ErlangMsgTag(String tag) throws IllegalArgumentException {
+	public MsgTag(String tag) throws IllegalArgumentException {
 		if (!(tag.equals(OK) || tag.equals(ERROR) || tag.equals(DATA) || tag.equals(CALL))) {
 			throw new IllegalArgumentException("tag not allowed: " + tag);
 		}
@@ -46,8 +46,8 @@ public class ErlangMsgTag {
 
 	@Override
 	public boolean equals(Object other) {
-		if (other instanceof ErlangMsgTag) {
-			return (this.tag == ((ErlangMsgTag) other).tag);
+		if (other instanceof MsgTag) {
+			return (this.tag == ((MsgTag) other).tag);
 		} else if (other instanceof String) {
 			return (this.tag.equals(other));
 		} else {

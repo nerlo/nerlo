@@ -29,7 +29,7 @@
     	<mkdir dir="${dist.dir}"/>
         <jar destfile="${dist.dir}/nerlo.jar">
             <manifest>
-                <attribute name="Main-Class" value="org.ister.nerlo.Main"/>
+                <attribute name="Main-Class" value="org.ister.ej.Main"/>
                 <attribute name="Class-Path" 
                 	value=". ${deps.name}/OtpErlang.jar 
                 	         ${deps.name}/commons-cli-1.2.jar
