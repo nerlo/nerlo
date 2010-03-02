@@ -34,8 +34,7 @@
 -define(TAG_ERROR, error).
 -define(TAG_DATA, data).
 -define(TAG_CALL, call).
--define(NERLOMSG(Tag,Body), {self(), {Tag, [Body]}}).
--define(NERLOMSGRCV(From,Tag,Body), {From, {Tag, Body}}).
+-define(NERLOMSG(Tag,Body), {self(), {Tag, Body}}).
 -define(NERLOMSGPART(Key, Value), {Key, Value}).
 
 -define(BINDIR, ".").
@@ -120,7 +119,7 @@ handle_cast({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S#jsrv.peer,S)
     end,
-    timer:send_after(500,?NERLOMSG(?TAG_OK,?NERLOMSGPART(call,bye))),
+    timer:send_after(500,?NERLOMSG(?TAG_OK,[?NERLOMSGPART(call,bye)])),
     log:info(self(),"stopping with state: ~w", [S]),
     {noreply, S#jsrv{stopping=true}};
 handle_cast(Msg,S) ->
@@ -181,7 +180,7 @@ handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
     log:info(self(), "send handshake to: ~p", [Peer]),
-    send_peer(Peer, ?TAG_CALL, ?NERLOMSGPART(call,handshake)),
+    send_peer(Peer, ?TAG_CALL, [?NERLOMSGPART(call,handshake)]),
     Peer.
 
 send_peer(Peer,Tag,Msg) ->
@@ -192,7 +191,7 @@ start_worker(S) ->
     gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
     
 shutdown(Peer,S) ->
-    send_peer(Peer, ?TAG_CALL, ?NERLOMSGPART(call,die)),
+    send_peer(Peer, ?TAG_CALL, [?NERLOMSGPART(call,die)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 
    

@@ -23,13 +23,12 @@ import com.ericsson.otp.erlang.*;
  *
  * <pre>
  * $ erl -sname shell -setcookie 123456
- * (shell@host)1> {jnode, 'jnode@host'} ! {self(), {666}}.
- * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {job}}.
- * (shell@host)3> {jnode, 'jnode@host'} ! {self(), {die}}.
+ * (shell@host)1> {jnode, 'jnode@host'} ! {self(), {data, [{number,666}]}}.
+ * (shell@host)1> {jnode, 'jnode@host'} ! {self(), {call, [{call,die}]}}.
  * </pre>
  * 
  * If this has been started canonically from within Erlang with 
- * nerlo_jsrv:start() you may send messages using nerlo_jsrv:send(Msg).
+ * nerlo_jsrv:start() you may send messages using nerlo_jsrv:send(Tag,Msg).
  *
  * @author ingo 
  */
@@ -100,7 +99,6 @@ public class JNode {
         if (node.ping(peernode, 2000)) {
             log.info(peernode + ": pong.");
         } else {
-        	// to die or not to die ...
             log.warn(peernode + ": pang!");
         }
 
@@ -145,22 +143,19 @@ public class JNode {
     private void processMsg(JMsg msg) throws Exception {
     	ErlangMsgTag tag = msg.getTag();
     	if (tag.equals(ErlangMsgTag.CALL)) {
-	    	// {self(), {call, {call, handshake}}}    
-	        //if        (msg.match(0, new OtpErlangAtom("handshake"))) {
+	    	// {self(), {call, [{call, handshake}]}}    
     		if        (msg.match("call", "handshake")) {
 	            handshake(msg);
-	    	// {self(), {call, {call, die}}}    
-	        //} else if (msg.match(0, new OtpErlangAtom("die"))) {
+	    	// {self(), {call, [{call, die}]}}    
     		} else if (msg.match("call", "die")) {
-	            shutdown(node);
-	        // {self(), {call, {call, job}}}
-	        //} else if (msg.match(0, new OtpErlangAtom("job"))) {
+	            shutdown(msg, node);
+	        // {self(), {call, [{call, job}]}}
     		} else if (msg.match("call", "job")) {
 	            job();
 	        } 
     	} else {
-            log.debug("Received from " + msg.getFrom().toString() 
-            		+ " message: " + msg.getMsg().toString());
+            log.info("unhandled message from " + msg.getFrom().toString() 
+            		  + ": " + msg.getMsg().toString());
         }
     }
     
@@ -168,8 +163,7 @@ public class JNode {
     	if (this.peerpid != null) return;
     	// dangerous; more sender checks needed
     	this.peerpid = msg.getFrom();
-    	log.info("handshake from: " + this.peerpid.toString());
-//    	sendPeer(new OtpErlangTuple(new OtpErlangAtom("handshake")));
+    	log.info("handshake from: " + msg.getFrom().toString());
     	try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "handshake");
@@ -180,10 +174,9 @@ public class JNode {
     	}
     }
     
-    private void shutdown(OtpNode node) {
-        log.info("Shutting down...");
+    private void shutdown(JMsg msg, OtpNode node) {
+    	log.info("shutdown request from: " + msg.getFrom().toString());
         this.bundle.shutdown();
-        //sendPeer(new OtpErlangTuple(new OtpErlangAtom("bye")));
         try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "bye");
@@ -193,7 +186,7 @@ public class JNode {
     		log.error("sending message failed in shutdown: " + e.toString());
     	} finally {
 	        OtpEpmd.unPublishPort(node);
-	        log.info("...bye");
+	        log.info("bye ----");
 	        System.exit(0);
     	}
     }
@@ -203,22 +196,13 @@ public class JNode {
     private void job() {
         List<Long> l = bundle.parallelCopyRun(new SimpleFiber());
         for (Long res : l) {
-            log.info("Future returned: " + res);
+            log.info("future returned: " + res);
         }
         Map<String, Object> map = new HashMap<String, Object>(2);
         map.put("job", "done");
         map.put("result", l.toString());
         JMsg msg = JMsg.factory(this.self, new ErlangMsgTag(ErlangMsgTag.OK), map);
         sendPeer(msg);
-    }
-    
-    private void sendPeer(OtpErlangTuple t) {
-    	JMsg msg = new JMsg(this.mbox.self(), t);
-    	if (this.peerpid == null) {
-    		log.error("cannot send, have no pid of peer");
-    		return;
-    	}
-    	this.mbox.send(this.peerpid, msg.toTuple());
     }
     
     private void sendPeer(JMsg msg) {
@@ -235,9 +219,9 @@ public class JNode {
             log.info("node running: " + this.nodename + "@" + java.net.InetAddress.getLocalHost().getHostName());
             log.info("peer: " + this.peernode);
             if (OtpEpmd.publishPort(node)) {
-                log.info("Node registered");
+                log.info("node registered");
             } else {
-                log.warn("Warning: Node registration failed");
+                log.warn("node registration failed");
             }
             String[] names = OtpEpmd.lookupNames();
             for (String name: names) {
