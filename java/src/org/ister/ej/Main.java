@@ -25,6 +25,7 @@ public class Main {
 	private String sname  = "jnode";
 	private String cookie = "123456";
 	private String peer   = "shell";
+	private String handlerClass = "org.ister.ej.SimpleMsgHandler";
 	private String propf  = pwd + "/properties";
 	
 	private static Node NODE = null;
@@ -86,6 +87,9 @@ public class Main {
         if (line.hasOption("ps")) {
             this.propf = line.getOptionValue("ps");
         }
+        if (line.hasOption("handlerClass")) {
+            this.handlerClass = line.getOptionValue("handlerClass");
+        }
 	}
 	
 	private void printBanner() {
@@ -113,6 +117,10 @@ public class Main {
         			.hasArg()
 			        .withDescription("give path to properties file")
 			        .create("ps");
+	    Option hdClass = OptionBuilder.withArgName("handlerClass")
+					.hasArg()
+			        .withDescription("give class of message handler")
+			        .create("handlerClass");
 	    
 	    Options options = new Options();
 	    options.addOption(help);
@@ -121,6 +129,7 @@ public class Main {
 	    options.addOption(cookie);
 	    options.addOption(peer);
 	    options.addOption(propf);
+	    options.addOption(hdClass);
 	    return options;
 	}
 	
@@ -134,9 +143,12 @@ public class Main {
 		} catch (FileNotFoundException e) {
 			System.out.println("ERROR: properties file not found at " + path);
 		} finally {
-			if (PROPERTIES.getProperty("jnode.cookie") == null) {
-				PROPERTIES.setProperty("jnode.cookie", this.cookie);
-			}			
+			if (PROPERTIES.getProperty("ej.cookie") == null) {
+				PROPERTIES.setProperty("ej.cookie", this.cookie);
+			}
+			if (PROPERTIES.getProperty("ej.msgHandler") == null) {
+				PROPERTIES.setProperty("ej.msgHandler", this.handlerClass);
+			}
 		}
 	}
 	

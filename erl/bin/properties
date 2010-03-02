@@ -1,7 +1,10 @@
-# jnode properties
+# ej properties
+#
+# settings in this file will overwrite command line options
 
 # setting cookie here will *always* overwrite other settings
-# jnode.cookie=123456
+# ej.cookie=123456
+ej.msgHandler=org.ister.nerlo.EjMsgHandler
 
 # log4j properties
 log4j.rootLogger=debug, R

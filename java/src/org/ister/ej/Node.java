@@ -42,13 +42,14 @@ public class Node {
 	private final String mboxname;
 	private final String peernode;
 	private final Logger log;
+	private final MsgHandler handler;
 	
 	private OtpNode node = null;
 	private OtpMbox mbox = null;
 	private OtpErlangPid self = null;
 	
 	private OtpErlangPid peerpid  = null;
-	private Bundle bundle;
+//	private Bundle bundle;
 
 	/**
 	 * Create with custom setup.
@@ -58,13 +59,14 @@ public class Node {
 	 * @param peer
 	 */
 	private Node(String name, String peer, Properties props) throws IOException {
-		this.cookie   = Main.getProperty("jnode.cookie", null);
+		this.cookie   = Main.getProperty("ej.cookie", null);
 		this.log      = Main.getLogger();
+		this.handler  = getHandler();
 		this.nodename = name;
 		this.mboxname = name;
 		this.peernode = peer;
-		this.node = this.getNode();
-		this.bundle = Bundle.getInstance();
+		this.node     = getNode();
+//		this.bundle   = Bundle.getInstance();
 	}
 	
 	/**
@@ -96,6 +98,8 @@ public class Node {
 	 * @throws Exception
 	 */
 	public void run() throws Exception {
+		
+		this.handler.setNode(this);
 		
         if (node.ping(peernode, 2000)) {
             log.info(peernode + ": pong.");
@@ -129,6 +133,14 @@ public class Node {
         }
     }
 	
+    public void sendPeer(Msg msg) {
+    	if (this.peerpid == null) {
+    		log.error("cannot send, have no pid of peer");
+    		return;
+    	}
+    	this.mbox.send(this.peerpid, msg.toTuple());
+    }
+	
 	/**
 	 * 
 	 * @return
@@ -143,20 +155,18 @@ public class Node {
 	
     private void processMsg(Msg msg) throws Exception {
     	MsgTag tag = msg.getTag();
-    	if (tag.equals(MsgTag.CALL)) {
+    	if (tag.equals(MsgTag.NODE)) {
 	    	// {self(), {call, [{call, handshake}]}}    
     		if        (msg.match("call", "handshake")) {
 	            handshake(msg);
 	    	// {self(), {call, [{call, die}]}}    
     		} else if (msg.match("call", "die")) {
 	            shutdown(msg, node);
-	        // {self(), {call, [{call, job}]}}
-    		} else if (msg.match("call", "job")) {
-	            job();
-	        } 
+    		} else {
+    			log.warn("unhandled NODE message from " + msg.getFrom().toString() + ": " + msg.toString());
+    		}
     	} else {
-            log.info("unhandled message from " + msg.getFrom().toString() 
-            		  + ": " + msg.getMsg().toString());
+    		this.handler.handle(msg);
         }
     }
     
@@ -177,7 +187,8 @@ public class Node {
     
     private void shutdown(Msg msg, OtpNode node) {
     	log.info("shutdown request from: " + msg.getFrom().toString());
-        this.bundle.shutdown();
+    	this.handler.shutdown();
+//        this.bundle.shutdown();
         try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "bye");
@@ -193,26 +204,25 @@ public class Node {
     }
 
     
-    @SuppressWarnings("unchecked")
-    private void job() {
-        List<Long> l = bundle.parallelCopyRun(new SimpleFiber());
-        for (Long res : l) {
-            log.info("future returned: " + res);
-        }
-        Map<String, Object> map = new HashMap<String, Object>(2);
-        map.put("job", "done");
-        map.put("result", l.toString());
-        Msg msg = Msg.factory(this.self, new MsgTag(MsgTag.OK), map);
-        sendPeer(msg);
-    }
+
     
-    private void sendPeer(Msg msg) {
-    	if (this.peerpid == null) {
-    		log.error("cannot send, have no pid of peer");
-    		return;
-    	}
-    	this.mbox.send(this.peerpid, msg.toTuple());
-    }
+	private MsgHandler getHandler() {
+		String className = Main.getProperty("ej.msgHandler", null);
+		try {
+			return (MsgHandler) Class.forName(className).newInstance();
+		} catch (InstantiationException e) {
+			log.error("cannot instantiate class: " + className);
+			return new SimpleMsgHandler();
+		} catch (IllegalAccessException e) {
+			log.error("cannot access class: " + className);
+			return new SimpleMsgHandler();
+		} catch (ClassNotFoundException e) {
+			log.error("class not found: " + className);
+			return new SimpleMsgHandler();
+		}
+	}
+    
+
 
     private OtpNode getNode() throws IOException {
         try {

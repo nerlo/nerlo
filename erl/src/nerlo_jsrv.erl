@@ -34,6 +34,7 @@
 -define(TAG_ERROR, error).
 -define(TAG_DATA, data).
 -define(TAG_CALL, call).
+-define(TAG_NODE, node).
 -define(NERLOMSG(Tag,Body), {self(), {Tag, Body}}).
 -define(NERLOMSGPART(Key, Value), {Key, Value}).
 
@@ -180,7 +181,7 @@ handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
     log:info(self(), "send handshake to: ~p", [Peer]),
-    send_peer(Peer, ?TAG_CALL, [?NERLOMSGPART(call,handshake)]),
+    send_peer(Peer, ?TAG_NODE, [?NERLOMSGPART(call,handshake)]),
     Peer.
 
 send_peer(Peer,Tag,Msg) ->
@@ -191,7 +192,7 @@ start_worker(S) ->
     gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
     
 shutdown(Peer,S) ->
-    send_peer(Peer, ?TAG_CALL, [?NERLOMSGPART(call,die)]),
+    send_peer(Peer, ?TAG_NODE, [?NERLOMSGPART(call,die)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 
    

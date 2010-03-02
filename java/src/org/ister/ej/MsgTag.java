@@ -16,6 +16,7 @@ public class MsgTag {
 	public static final String ERROR = "error";
 	public static final String DATA = "data";
 	public static final String CALL = "call";
+	public static final String NODE = "node";
 	
 	/**
 	 * 
@@ -23,7 +24,11 @@ public class MsgTag {
 	 * @throws IllegalArgumentException
 	 */
 	public MsgTag(String tag) throws IllegalArgumentException {
-		if (!(tag.equals(OK) || tag.equals(ERROR) || tag.equals(DATA) || tag.equals(CALL))) {
+		if (!(tag.equals(OK) 
+			|| tag.equals(ERROR) 
+			|| tag.equals(DATA) 
+			|| tag.equals(CALL)
+			|| tag.equals(NODE))) {
 			throw new IllegalArgumentException("tag not allowed: " + tag);
 		}
 		this.tag = tag;
