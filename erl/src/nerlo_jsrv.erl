@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([job/1,send/1]).
+-export([send/2]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -29,8 +29,16 @@
 -define(STARTSPEC, {local, ?SRVNAME}).
 -define(PEERNAME, jnode).
 -define(PEERSTR, atom_to_list(?PEERNAME)).
--define(NERLOMSG(Body), {self(), {Body}}).
--define(BINDIR, "./").
+
+-define(TAG_OK, ok).
+-define(TAG_ERROR, error).
+-define(TAG_DATA, data).
+-define(TAG_CALL, call).
+-define(NERLOMSG(Tag,Body), {self(), {Tag, [Body]}}).
+-define(NERLOMSGRCV(From,Tag,Body), {From, {Tag, Body}}).
+-define(NERLOMSGPART(Key, Value), {Key, Value}).
+
+-define(BINDIR, ".").
 -define(JNODEBIN, "jnode").
 
 -record(jsrv, {workers = []
@@ -63,11 +71,8 @@ stop() ->
     gen_server:cast(?SRVNAME, {'STOP'}).
 
 % @doc Send a message to the peer.
-send(Msg) ->
-    gen_server:call(?SRVNAME, {send, Msg}).
-
-job(Spec) ->
-    gen_server:call(?SRVNAME, {job, Spec}).   
+send(Tag,Msg = [_|_]) ->
+    gen_server:call(?SRVNAME, {send, Tag, Msg}).
 
    
 % @hidden    
@@ -97,21 +102,17 @@ handle_call({job,Spec},From,S) ->
     {W, L} = f:lrot(S#jsrv.workers),
     gen_server:cast(W,{job,From,Spec}),
     {noreply, S#jsrv{workers=L}};
-handle_call({send,Msg},From,S) ->
+handle_call({send,Tag,Msg},From,S) ->
     {W, L} = f:lrot(S#jsrv.workers),
-    gen_server:cast(W,{send,From,Msg}),
+    gen_server:cast(W,{send,From,Tag,Msg}),
     {noreply, S#jsrv{workers=L}};
 handle_call(Msg,From,S) ->
     log:warn(self(), "Cannot understand call from ~p: ~p", [From,Msg]),
     {reply, {error, unknown_msg}, S}.
 
 % @hidden
-handle_cast({job,From,Spec}, S) ->
-    Result = send_job(S#jsrv.peer,Spec),
-    gen_server:reply(From, Result),
-    {noreply, S};
-handle_cast({send,From,Msg}, S) ->
-    Result = send_peer(S#jsrv.peer,Msg),
+handle_cast({send,From,Tag,Msg}, S) ->
+    Result = send_peer(S#jsrv.peer,Tag,Msg),
     gen_server:reply(From, Result),
     {noreply, S};
 handle_cast({'STOP'}, S) ->
@@ -119,7 +120,7 @@ handle_cast({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S#jsrv.peer,S)
     end,
-    timer:send_after(500,?NERLOMSG(bye)),
+    timer:send_after(500,?NERLOMSG(?TAG_OK,?NERLOMSGPART(call,bye))),
     log:info(self(),"stopping with state: ~w", [S]),
     {noreply, S#jsrv{stopping=true}};
 handle_cast(Msg,S) ->
@@ -127,16 +128,16 @@ handle_cast(Msg,S) ->
     {noreply, S}.
 
 % @hidden
-handle_info({Pid,{handshake}},S) ->
+handle_info({From,{?TAG_OK,[?NERLOMSGPART(call,handshake)]}},S) ->
     % TODO only allow from peer
-    log:debug(self(), "got handshake from: ~p", [Pid]),
-    {noreply, S#jsrv{peer=Pid}};
+    log:debug(self(), "got handshake from: ~p", [From]),
+    {noreply, S#jsrv{peer=From}};
 handle_info({Port,{data,"\n"}},S) when is_port(Port) ->
     {noreply,S};
 handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     log:info(self(),"port says: ~p", [Msg]),
     {noreply,S};
-handle_info({From,{bye}},S) ->
+handle_info({From,{?TAG_OK,[?NERLOMSGPART(call,bye)]}},S) ->
     case S#jsrv.stopping of
         false -> 
             log:warn(self(), "ignore 'bye' while not in stopping state: ~p", [From]),
@@ -145,6 +146,14 @@ handle_info({From,{bye}},S) ->
             % TODO only allow from peer and self()
             log:info(self(), "'bye' triggered: ~p", [From]),
             {stop, normal, S}
+    end;
+handle_info({'STOP'},S) ->
+    case S#jsrv.worker of
+        yes -> 
+            log:info(self(),"stopping with state: ~w", [S]),
+            {stop, normal, S};
+        no  -> 
+            {noreply,S}
     end;
 handle_info(Msg,S) ->
     log:info(self(),"info: ~p", [Msg]),
@@ -172,20 +181,18 @@ handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
     log:info(self(), "send handshake to: ~p", [Peer]),
-    send_peer(Peer, handshake),
+    send_peer(Peer, ?TAG_CALL, ?NERLOMSGPART(call,handshake)),
     Peer.
 
-send_job(Peer,Spec) ->
-    send_peer(Peer,{job, Spec}).
-
-send_peer(Peer,Msg) ->
-    Peer ! ?NERLOMSG(Msg).
+send_peer(Peer,Tag,Msg) ->
+    log:debug(self(), "send to peer: ~p", [?NERLOMSG(Tag,Msg)]),
+    Peer ! ?NERLOMSG(Tag,Msg).
 
 start_worker(S) ->
     gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
     
 shutdown(Peer,S) ->
-    send_peer(Peer, die),
+    send_peer(Peer, ?TAG_CALL, ?NERLOMSGPART(call,die)),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 
    
