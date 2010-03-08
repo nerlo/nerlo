@@ -68,7 +68,8 @@ stop() ->
 % @doc Send a message to the peer and return immediately.
 send(Tag,Msg = [_|_]) ->
     Ref = ?EJMSGREF(self(),erlang:make_ref()),
-    gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}).
+    gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}),
+    ok.
 
 % @doc Send a message to the peer and wait for an answer.
 % This runs with a default timeout of 10 seconds.
@@ -219,7 +220,7 @@ handshake(Bindir) ->
     Peer.
     
 shutdown(Peer,S) ->
-    send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,die)]),
+    send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 
    

@@ -81,7 +81,7 @@ public class Node {
 	
 	public static Node getInstance() throws IllegalStateException {
 		if (INSTANCE == null) {
-			throw new IllegalStateException("JNode not initialized");
+			throw new IllegalStateException("Node not initialized");
 		}
 		return INSTANCE;
 	}
@@ -113,13 +113,13 @@ public class Node {
                 	throw new IllegalArgumentException("Tuple expected");
                 }
 	        } catch (OtpErlangDecodeException e) {
-	            log.error("received message could not be decoded\n" + e.toString());
+	            log.error("received message could not be decoded: " + e.toString());
 	            continue;
 	        } catch (OtpErlangExit e) {
 	            log.error("remote pid " + e.pid() + " has terminated.");
 	            continue;
 	        } catch (IllegalArgumentException e) {
-	        	log.error("parsing message\n" + e.toString());
+	        	log.error("parsing message: " + e.toString());
             }
         }
     }
@@ -147,11 +147,9 @@ public class Node {
     private void processMsg(Msg msg) throws Exception {
     	MsgTag tag = msg.getTag();
     	if (tag.equals(MsgTag.NODE)) {
-	    	// {self(), {call, [{call, handshake}]}}    
     		if        (msg.match("call", "handshake")) {
 	            handshake(msg);
-	    	// {self(), {call, [{call, die}]}}    
-    		} else if (msg.match("call", "die")) {
+    		} else if (msg.match("call", "shutdown")) {
 	            shutdown(msg, node);
     		} else {
     			log.warn("unhandled NODE message from " + msg.getFrom().toString() + ": " + msg.toString());

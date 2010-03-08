@@ -23,7 +23,7 @@ import com.ericsson.otp.erlang.*;
  * LIST  := [PART+]
  * PART  := {KEY,VALUE}
  * KEY   := Atom
- * VALUE := Atom | String | Binary | Int 
+ * VALUE := Atom | Binary | Int | Float | List
  * 
  * @author ingo
  *
@@ -45,7 +45,7 @@ public class Msg {
 		this.from = (OtpErlangPid) self.clone();
 		this.ref  = (MsgRef) ref.clone();
 		this.msg  = (OtpErlangTuple) tuple.clone();
-		this.map  = msgToMap();
+		this.map  = toMap();
 	}
 	
 	/**
@@ -64,7 +64,7 @@ public class Msg {
 		this.from = getFrom(t);
 		this.ref  = getRef(t);
 		this.msg  = getMsg(t);
-		this.map  = msgToMap();
+		this.map  = toMap();
 	}
 	
 	
@@ -130,6 +130,15 @@ public class Msg {
 	}
 	
 	/**
+	 * Get map.
+	 * 
+	 * @return
+	 */
+	public Map<String,Object> getMap() {
+		return this.map;
+	}
+	
+	/**
 	 * 
 	 * @return
 	 * @throws IllegalArgumentException
@@ -143,10 +152,11 @@ public class Msg {
 	}
 	
 	/**
+	 * This will always recalculate the map.
 	 * 
 	 * @return
 	 */
-	public Map<String, Object> msgToMap() throws IllegalArgumentException {
+	protected Map<String, Object> toMap() throws IllegalArgumentException {
 		ErlangTransformer trans = new ErlangTransformer();
 		if (this.msg.arity() != 2) {
 			throw new IllegalArgumentException("malformed message: wrong arity");
@@ -178,9 +188,7 @@ public class Msg {
 	 * @return
 	 */
 	public OtpErlangTuple toTuple() {
-		OtpErlangObject[] l = {this.from, this.ref.toTuple(), this.msg}; // new OtpErlangObject[2];
-//		l[0] = this.from;
-//		l[1] = this.msg;
+		OtpErlangObject[] l = {this.from, this.ref.toTuple(), this.msg};
 		return new OtpErlangTuple(l);
 	}
 	
@@ -208,19 +216,14 @@ public class Msg {
 		OtpErlangObject[] ts = new OtpErlangObject[map.size()];
 		int i = 0;
 		for (String key : map.keySet()) {
-			OtpErlangObject[] l = new OtpErlangObject[2];
-			l[0] = new OtpErlangAtom(key);
-			l[1] = trans.fromJava(map.get(key));
+			OtpErlangObject[] l = {new OtpErlangAtom(key), trans.fromJava(map.get(key))}; 
 			OtpErlangTuple t = new OtpErlangTuple(l);
 			ts[i++] = t;
 		}
 		OtpErlangList list = new OtpErlangList(ts);
 		
-		OtpErlangObject[] tl = new OtpErlangObject[2];
-		tl[0] = msgtag.toAtom();
-		tl[1] = list;
+		OtpErlangObject[] tl =  {msgtag.toAtom(),list};
 		OtpErlangTuple msg = new OtpErlangTuple(tl);
-//		MsgRef mref = new MsgRef(self, ref);
 		return new Msg(self, ref, msg);
 	}
 	

@@ -26,16 +26,16 @@ public class EjMsgHandler extends AbstractMsgHandler {
 	public void handle(Msg msg) {
     	MsgTag tag = msg.getTag();
     	if (tag.equals(MsgTag.CALL)) {
-	    	// {self(), {call, [{call, job}]}}    
     		if (msg.match("call", "job")) {
 	            job(msg);
-    		} else {
-    			log.warn("unhandled message from " + msg.getFrom().toString() + ": " + msg.getMsg().toString());
+	            return;
     		}
-    	} else {
-    		log.warn("unhandled message from " + msg.getFrom().toString() + ": " + msg.getMsg().toString());
-        }
-
+    	}
+		log.warn("unhandled message from " 
+				+ msg.getFrom().toString() 
+				+ ": " + msg.getMsg().toString()
+				+ " -- transformed paylod: "
+				+ msg.getMap().toString());
 	}
 	
   @SuppressWarnings("unchecked")
