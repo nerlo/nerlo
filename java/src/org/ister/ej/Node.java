@@ -2,14 +2,10 @@ package org.ister.ej;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
-import org.ister.nerlo.Bundle;
-import org.ister.nerlo.example.SimpleFiber;
 
 import com.ericsson.otp.erlang.*;
 
@@ -29,7 +25,7 @@ import com.ericsson.otp.erlang.*;
  * </pre>
  * 
  * If this has been started canonically from within Erlang with 
- * nerlo_jsrv:start() you may send messages using nerlo_jsrv:send(Tag,Msg).
+ * ej_srv:start() you may send messages using ej_srv:send/2 or ej_srv:call/2,3.
  *
  * @author ingo 
  */
@@ -49,7 +45,6 @@ public class Node {
 	private OtpErlangPid self = null;
 	
 	private OtpErlangPid peerpid  = null;
-//	private Bundle bundle;
 
 	/**
 	 * Create with custom setup.
@@ -66,7 +61,6 @@ public class Node {
 		this.mboxname = name;
 		this.peernode = peer;
 		this.node     = getNode();
-//		this.bundle   = Bundle.getInstance();
 	}
 	
 	/**
@@ -126,9 +120,6 @@ public class Node {
 	            continue;
 	        } catch (IllegalArgumentException e) {
 	        	log.error("parsing message\n" + e.toString());
-//	        } catch (Exception e) {
-//                System.out.println("Error: unexpected exception in while\n" + e.toString());
-//                System.exit(1);
             }
         }
     }
@@ -188,7 +179,6 @@ public class Node {
     private void shutdown(Msg msg, OtpNode node) {
     	log.info("shutdown request from: " + msg.getFrom().toString());
     	this.handler.shutdown();
-//        this.bundle.shutdown();
         try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "bye");
@@ -202,9 +192,6 @@ public class Node {
 	        System.exit(0);
     	}
     }
-
-    
-
     
 	private MsgHandler getHandler() {
 		String className = Main.getProperty("ej.msgHandler", null);
@@ -246,10 +233,6 @@ public class Node {
             log.fatal("no node\n" + e.toString());
             throw e;
         }
-    }
-    
-    private MsgRef createRef() {
-    	return new MsgRef(this.self, this.node.createRef());
     }
 
 }

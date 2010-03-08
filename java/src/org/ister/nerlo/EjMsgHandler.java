@@ -46,7 +46,6 @@ public class EjMsgHandler extends AbstractMsgHandler {
           log.info("future returned: " + res);
       }
       Map<String, Object> map = new HashMap<String, Object>(2);
-      map.put("job", "done");
       map.put("result", l.toString());
       Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
       node.sendPeer(answer);

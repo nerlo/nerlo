@@ -16,7 +16,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([send/2, call/2]).
+-export([send/2, call/2, call/3]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -33,15 +33,6 @@
 -define(STARTSPEC, {local, ?SRVNAME}).
 -define(PEERNAME, jnode).
 -define(PEERSTR, atom_to_list(?PEERNAME)).
-
-%% -define(TAG_OK, ok).
-%% -define(TAG_ERROR, error).
-%% -define(TAG_DATA, data).
-%% -define(TAG_CALL, call).
-%% -define(TAG_NODE, node).
-%% -define(EJMSG(Tag,Body), {self(), {Tag, Body}}).
-%% -define(EJMSGPART(Key, Value), {Key, Value}).
-
 -define(BINDIR, ".").
 -define(JNODEBIN, "jnode").
 
@@ -74,20 +65,26 @@ start_link(N,Bindir) ->
 stop() ->
     gen_server:cast(?SRVNAME, {'STOP'}).
 
-% @doc Send a message to the peer.
+% @doc Send a message to the peer and return immediately.
 send(Tag,Msg = [_|_]) ->
     Ref = ?EJMSGREF(self(),erlang:make_ref()),
     gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}).
 
-% @doc blocking call
-call(Tag,Msg = [_|_]) ->
+% @doc Send a message to the peer and wait for an answer.
+% This runs with a default timeout of 10 seconds.
+call(Tag,Msg) ->
+    call(Tag,Msg,10).
+
+% @doc Send a message to the peer and wait for an answer.
+% After Timeout seconds {error,timeout} will be returned.
+% Set Timeout to 'infinity' to wait forever.
+call(Tag,Msg = [_|_],Timeout) ->
     Ref = ?EJMSGREF(self(),erlang:make_ref()),
     gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}),
     receive
-        {From, Ref, Result} -> Result;
-        Any                 -> {any,Any}
+        {From, Ref, Result} -> Result
     after
-        2000 -> timeout
+        Timeout * 1000 -> {error,timeout}
     end.
    
 % @hidden    
@@ -99,7 +96,12 @@ init(S) ->
             {ok,Cwd} = file:get_cwd(),
             log:debug(self(), "cwd: ~p", [Cwd]),
             timer:start(),
-            Peer    = handshake(S#jsrv.bindir),
+            Bindir = 
+                if 
+                    S#jsrv.bindir =:= ?BINDIR -> Cwd;
+                    true                      -> S#jsrv.bindir
+                end,
+            Peer    = handshake(Bindir),
             S2 = S#jsrv{peer=Peer},
             Workers =
             lists:foldl(fun(_I,Acc) -> 
@@ -108,14 +110,9 @@ init(S) ->
                                 _Any     -> Acc
                             end
                         end, [], lists:seq(1,S#jsrv.n)),
-            Bindir = 
-                if 
-                    S2#jsrv.bindir =:= ?BINDIR -> Cwd;
-                    true                       -> S2#jsrv.bindir
-                end,
             S2#jsrv{workers=Workers,bindir=Bindir}
     end,
-    log:info(self(), "~p initialized with state ~w", [?MODULE, S1]),
+    log:info(self(), "~p initialized with state ~p", [?MODULE, S1]),
     {ok,S1}.
 
 % @hidden     
@@ -142,7 +139,7 @@ handle_cast({'STOP'}, S) ->
         no  -> shutdown(S#jsrv.peer,S)
     end,
     timer:send_after(500,?EJMSG(erlang:make_ref(), ?TAG_OK,[?EJMSGPART(call,bye)])),
-    log:info(self(),"stopping with state: ~w", [S]),
+    log:info(self(),"stopping with state: ~p", [S]),
     {noreply, S#jsrv{stopping=true}};
 handle_cast(Msg,S) ->
     log:info(self(),"cannot handle cast: ~p", [Msg]),
@@ -174,16 +171,14 @@ handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
 handle_info({'STOP'},S) ->
     case S#jsrv.worker of
         yes -> 
-            log:info(self(),"stopping with state: ~w", [S]),
+            log:info(self(),"stopping with state: ~p", [S]),
             {stop, normal, S};
         no  -> 
             {noreply,S}
     end;
 % messages to be routed to client
-handle_info({From,Ref,Msg},S) ->
-    % TODO check Ref
+handle_info({From,Ref={Client,Id},Msg},S) ->
     log:debug(self(), "got result: ~p ~p ~p", [From,Ref,Msg]),
-    {Client,Id} = Ref,
     Client ! {self(),Ref,Msg},
     {noreply, S};
 handle_info(Msg,S) ->

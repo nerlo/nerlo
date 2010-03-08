@@ -16,6 +16,7 @@ Erlang >= R13B03
 GNU make
 Ant >= 1.8 (lower may work as well)
 commons-cli-1.2
+log4j--1.2.15
 
 NOTE: Dependency management is by hand for now. Later we may
 use Ivy or Maven for Java dependencies.
@@ -36,8 +37,8 @@ RUN
 
 $ cd erl
 $ bin/shell
-erl 1> nerlo_jsrv:start().
-erl 2> nerlo_jsrv:stop().
+erl 1> ej_srv:start().
+erl 2> ej_srv:stop().
 
 
 

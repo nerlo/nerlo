@@ -4,7 +4,6 @@
 package org.ister.ej;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 
@@ -26,9 +25,6 @@ import com.ericsson.otp.erlang.*;
  * KEY   := Atom
  * VALUE := Atom | String | Binary | Int 
  * 
- * Should be threadsafe. But, what exactly does "threadsafe" mean...?
- * This one is immutable.
- * 
  * @author ingo
  *
  */
@@ -47,7 +43,7 @@ public class Msg {
 	 */
 	public Msg(OtpErlangPid self, MsgRef ref, OtpErlangTuple tuple) {
 		this.from = (OtpErlangPid) self.clone();
-		this.ref  = ref;
+		this.ref  = (MsgRef) ref.clone();
 		this.msg  = (OtpErlangTuple) tuple.clone();
 		this.map  = msgToMap();
 	}

@@ -1,6 +1,5 @@
 package org.ister.ej;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -12,8 +11,6 @@ import org.apache.log4j.PropertyConfigurator;
 
 /**
  * Main class.
- * 
- * We should read node spec from command line and/or conf file.
  *
  * @author ingo
  */

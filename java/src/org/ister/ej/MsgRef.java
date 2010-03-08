@@ -6,7 +6,7 @@ import com.ericsson.otp.erlang.OtpErlangRef;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 
 /**
- * An ej message ref.
+ * An ej message reference.
  * 
  * @author ingo
  *
@@ -17,9 +17,15 @@ public class MsgRef {
 	private final OtpErlangRef ref;
 	private final OtpErlangTuple t;
 	
+	private MsgRef(MsgRef other) {
+		this.pid = (OtpErlangPid) other.pid.clone();
+		this.ref = (OtpErlangRef) other.ref.clone();
+		this.t   = (OtpErlangTuple) other.t.clone();
+	}
+	
 	public MsgRef(OtpErlangPid pid, OtpErlangRef ref) {
-		this.pid = pid;
-		this.ref = ref;
+		this.pid = (OtpErlangPid) pid.clone();
+		this.ref = (OtpErlangRef) ref.clone();
 		OtpErlangObject[] r = {this.pid, this.ref};
 		this.t   = new OtpErlangTuple(r);
 	}
@@ -34,13 +40,18 @@ public class MsgRef {
 		if (! (t.elementAt(1) instanceof OtpErlangRef)) {
             throw new IllegalArgumentException("ref has no ref at position 1");
         }
-		this.pid = (OtpErlangPid) t.elementAt(0);
-		this.ref = (OtpErlangRef) t.elementAt(1);
-		this.t   = t;
+		this.pid = (OtpErlangPid) t.elementAt(0).clone();
+		this.ref = (OtpErlangRef) t.elementAt(1).clone();
+		this.t   = (OtpErlangTuple) t.clone();
 	}
 	
 	public OtpErlangTuple toTuple() {
-		return this.t;
+		return (OtpErlangTuple) this.t.clone();
+	}
+	
+	@Override
+	public Object clone() {
+		return new MsgRef(this);
 	}
 	
 }
