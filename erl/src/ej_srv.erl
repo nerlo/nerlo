@@ -198,13 +198,17 @@ code_change(_OldVsn, S, _Extra) ->
 %% ------ PRIVATE PARTS -----
 
 send_peer(Peer,Ref,Tag,Msg) ->
-    % TODO return answer properly to client
     log:debug(self(), "send_peer: ~p", [?EJMSG(Ref,Tag,Msg)]),
     Peer ! ?EJMSG(Ref,Tag,Msg).
 
 start_worker(S) ->
     gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
 
+% TODO first check for running java node
+% if ej_srv unconditionally died it had no
+% chance to send a shutdown to the peer
+% but supervisor restarts leaving a
+% zombie JVM in the backend
 handshake(Bindir) ->
     Args = "-peer " ++ atom_to_list(node())
          ++ " -sname " ++ ?PEERSTR
