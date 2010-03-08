@@ -3,13 +3,13 @@
 %%
 %% If nerlo.jar in ../java/dist, then
 %% <pre>
-%% (shell@host)1> {ok,Pid} = nerlo_jsrv:start().
-%% (shell@host)2> nerlo_jsrv:send(job).
-%% (shell@host)3> nerlo_jsrv:stop().
+%% (shell@host)1> {ok,Pid} = ej_srv:start().
+%% (shell@host)2> ej_srv:send(job).
+%% (shell@host)3> ej_srv:stop().
 %% </pre>
 %% @author Ingo Schramm
 
--module(nerlo_jsrv).
+-module(ej_srv).
 -behaviour(gen_server).
 
 % public interface
@@ -22,6 +22,7 @@
 -author("Ingo Schramm").
 
 -include("global.hrl").
+-include("ej.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -define(DEFAULT_N, erlang:system_info(schedulers_online) * 2).
@@ -30,13 +31,13 @@
 -define(PEERNAME, jnode).
 -define(PEERSTR, atom_to_list(?PEERNAME)).
 
--define(TAG_OK, ok).
--define(TAG_ERROR, error).
--define(TAG_DATA, data).
--define(TAG_CALL, call).
--define(TAG_NODE, node).
--define(NERLOMSG(Tag,Body), {self(), {Tag, Body}}).
--define(NERLOMSGPART(Key, Value), {Key, Value}).
+%% -define(TAG_OK, ok).
+%% -define(TAG_ERROR, error).
+%% -define(TAG_DATA, data).
+%% -define(TAG_CALL, call).
+%% -define(TAG_NODE, node).
+%% -define(EJMSG(Tag,Body), {self(), {Tag, Body}}).
+%% -define(EJMSGPART(Key, Value), {Key, Value}).
 
 -define(BINDIR, ".").
 -define(JNODEBIN, "jnode").
@@ -120,7 +121,7 @@ handle_cast({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S#jsrv.peer,S)
     end,
-    timer:send_after(500,?NERLOMSG(?TAG_OK,[?NERLOMSGPART(call,bye)])),
+    timer:send_after(500,?EJMSG(?TAG_OK,[?EJMSGPART(call,bye)])),
     log:info(self(),"stopping with state: ~w", [S]),
     {noreply, S#jsrv{stopping=true}};
 handle_cast(Msg,S) ->
@@ -128,7 +129,7 @@ handle_cast(Msg,S) ->
     {noreply, S}.
 
 % @hidden
-handle_info({From,{?TAG_OK,[?NERLOMSGPART(call,handshake)]}},S) ->
+handle_info({From,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
     % TODO only allow from peer
     log:debug(self(), "got handshake from: ~p", [From]),
     {noreply, S#jsrv{peer=From}};
@@ -137,7 +138,7 @@ handle_info({Port,{data,"\n"}},S) when is_port(Port) ->
 handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     log:info(self(),"port says: ~p", [Msg]),
     {noreply,S};
-handle_info({From,{?TAG_OK,[?NERLOMSGPART(call,bye)]}},S) ->
+handle_info({From,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
     case S#jsrv.stopping of
         false -> 
             log:warn(self(), "ignore 'bye' while not in stopping state: ~p", [From]),
@@ -181,18 +182,19 @@ handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
     log:info(self(), "send handshake to: ~p", [Peer]),
-    send_peer(Peer, ?TAG_NODE, [?NERLOMSGPART(call,handshake)]),
+    send_peer(Peer, ?TAG_NODE, [?EJMSGPART(call,handshake)]),
     Peer.
 
 send_peer(Peer,Tag,Msg) ->
-    log:debug(self(), "send to peer: ~p", [?NERLOMSG(Tag,Msg)]),
-    Peer ! ?NERLOMSG(Tag,Msg).
+    % TODO return answer properly to client
+    log:debug(self(), "send to peer: ~p", [?EJMSG(Tag,Msg)]),
+    Peer ! ?EJMSG(Tag,Msg).
 
 start_worker(S) ->
     gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
     
 shutdown(Peer,S) ->
-    send_peer(Peer, ?TAG_NODE, [?NERLOMSGPART(call,die)]),
+    send_peer(Peer, ?TAG_NODE, [?EJMSGPART(call,die)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 
    

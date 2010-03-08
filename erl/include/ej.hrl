@@ -1,0 +1,7 @@
+-define(TAG_OK, ok).
+-define(TAG_ERROR, error).
+-define(TAG_DATA, data).
+-define(TAG_CALL, call).
+-define(TAG_NODE, node).
+-define(EJMSG(Tag,Body), {self(), {Tag, Body}}).
+-define(EJMSGPART(Key, Value), {Key, Value}).
