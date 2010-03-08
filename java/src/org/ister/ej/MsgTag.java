@@ -12,11 +12,11 @@ public class MsgTag {
 	
 	private final String tag;
 	
-	public static final String OK = "ok";
+	public static final String OK    = "ok";
 	public static final String ERROR = "error";
-	public static final String DATA = "data";
-	public static final String CALL = "call";
-	public static final String NODE = "node";
+	public static final String DATA  = "data";
+	public static final String CALL  = "call";
+	public static final String NODE  = "node";
 	
 	/**
 	 * 

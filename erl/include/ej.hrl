@@ -3,5 +3,7 @@
 -define(TAG_DATA, data).
 -define(TAG_CALL, call).
 -define(TAG_NODE, node).
--define(EJMSG(Tag,Body), {self(), {Tag, Body}}).
+
+-define(EJMSGREF(Pid,Ref), {Pid,Ref}).
+-define(EJMSG(Ref,Tag,Body), {self(), Ref, {Tag, Body}}).
 -define(EJMSGPART(Key, Value), {Key, Value}).

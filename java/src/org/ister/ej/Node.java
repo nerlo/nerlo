@@ -178,7 +178,7 @@ public class Node {
     	try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "handshake");
-	        Msg answer = Msg.factory(this.self, new MsgTag(MsgTag.OK), map);
+	        Msg answer = Msg.answer(this.self, MsgTag.OK, map, msg);
 	        sendPeer(answer);
     	} catch (Exception e) {
     		log.error("sending message failed in handshake: " + e.toString());
@@ -192,7 +192,7 @@ public class Node {
         try {
 	    	Map<String, Object> map = new HashMap<String, Object>(2);
 	        map.put("call", "bye");
-	        Msg answer = Msg.factory(this.self, new MsgTag(MsgTag.OK), map);
+	        Msg answer = Msg.answer(this.self, MsgTag.OK, map, msg);
 	        sendPeer(answer);
         } catch (Exception e) {
     		log.error("sending message failed in shutdown: " + e.toString());
@@ -246,6 +246,10 @@ public class Node {
             log.fatal("no node\n" + e.toString());
             throw e;
         }
+    }
+    
+    private MsgRef createRef() {
+    	return new MsgRef(this.self, this.node.createRef());
     }
 
 }

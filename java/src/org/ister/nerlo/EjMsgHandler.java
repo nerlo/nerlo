@@ -48,7 +48,7 @@ public class EjMsgHandler extends AbstractMsgHandler {
       Map<String, Object> map = new HashMap<String, Object>(2);
       map.put("job", "done");
       map.put("result", l.toString());
-      Msg answer = Msg.factory(node.getSelf(), new MsgTag(MsgTag.OK), map);
+      Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
       node.sendPeer(answer);
   }
 

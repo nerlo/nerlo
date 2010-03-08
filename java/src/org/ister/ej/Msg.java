@@ -14,8 +14,17 @@ import com.ericsson.otp.erlang.*;
  * A java representation of a specific Erlang message.
  * 
  * This message has a well defined format. Construction
- * fails if the format is broken. A valid form is at
- * least like this: {From, {Msg}}
+ * fails if the format is broken. 
+ * 
+ * EJMSG := {FROM, REF, {MSG}}
+ * FROM  := Pid
+ * REF   := {Pid,Ref}
+ * MSG   := {TAG,LIST}
+ * TAG   := ok | error | data | call | node
+ * LIST  := [PART+]
+ * PART  := {KEY,VALUE}
+ * KEY   := Atom
+ * VALUE := Atom | String | Binary | Int 
  * 
  * Should be threadsafe. But, what exactly does "threadsafe" mean...?
  * This one is immutable.
@@ -26,6 +35,7 @@ import com.ericsson.otp.erlang.*;
 public class Msg {
 
 	private final OtpErlangPid from;
+	private final MsgRef ref;
 	private final OtpErlangTuple msg;
 	private final Map<String, Object> map;
 	
@@ -35,8 +45,9 @@ public class Msg {
 	 * @param pid
 	 * @param tuple
 	 */
-	public Msg(OtpErlangPid self, OtpErlangTuple tuple) {
+	public Msg(OtpErlangPid self, MsgRef ref, OtpErlangTuple tuple) {
 		this.from = (OtpErlangPid) self.clone();
+		this.ref  = ref;
 		this.msg  = (OtpErlangTuple) tuple.clone();
 		this.map  = msgToMap();
 	}
@@ -49,11 +60,13 @@ public class Msg {
 	 */
 	public Msg(OtpErlangTuple tuple) throws IllegalArgumentException {
 		
-		if (tuple.arity() != 2) {
-			throw new IllegalArgumentException("cannot determine From");
+		if (tuple.arity() != 3) {
+			throw new IllegalArgumentException("message has wrong arity");
 		}
+		
 		OtpErlangTuple t = (OtpErlangTuple) tuple.clone();
 		this.from = getFrom(t);
+		this.ref  = getRef(t);
 		this.msg  = getMsg(t);
 		this.map  = msgToMap();
 	}
@@ -91,6 +104,24 @@ public class Msg {
 	 */
 	public OtpErlangPid getFrom() {
 		return this.from;
+	}
+	
+	/**
+	 * Get sender Pid of this message.
+	 * 
+	 * @return
+	 */
+	public MsgRef getRef() {
+		return this.ref;
+	}
+	
+	/**
+	 * Get sender Pid of this message.
+	 * 
+	 * @return
+	 */
+	public OtpErlangTuple getRefTuple() {
+		return this.ref.toTuple();
 	}
 	
 	/**
@@ -151,9 +182,9 @@ public class Msg {
 	 * @return
 	 */
 	public OtpErlangTuple toTuple() {
-		OtpErlangObject[] l = new OtpErlangObject[2];
-		l[0] = this.from;
-		l[1] = this.msg;
+		OtpErlangObject[] l = {this.from, this.ref.toTuple(), this.msg}; // new OtpErlangObject[2];
+//		l[0] = this.from;
+//		l[1] = this.msg;
 		return new OtpErlangTuple(l);
 	}
 	
@@ -175,7 +206,7 @@ public class Msg {
 	 * @param tagstr
 	 * @return
 	 */
-	public static Msg factory(OtpErlangPid self, MsgTag msgtag, Map<String, Object> map) {
+	public static Msg factory(OtpErlangPid self, MsgRef ref, MsgTag msgtag, Map<String, Object> map) {
 		ErlangTransformer trans = new ErlangTransformer();
 		
 		OtpErlangObject[] ts = new OtpErlangObject[map.size()];
@@ -193,9 +224,13 @@ public class Msg {
 		tl[0] = msgtag.toAtom();
 		tl[1] = list;
 		OtpErlangTuple msg = new OtpErlangTuple(tl);
-		return new Msg(self, msg);
+//		MsgRef mref = new MsgRef(self, ref);
+		return new Msg(self, ref, msg);
 	}
 	
+	public static Msg answer(OtpErlangPid self, String tag, Map<String, Object> map, Msg request) {
+		return factory(self, request.getRef(), new MsgTag(tag), map);
+	}
     
 	/* PRIVATE */
 	
@@ -206,13 +241,20 @@ public class Msg {
         return (OtpErlangPid) (t.elementAt(0));
     }
     
-    private OtpErlangTuple getMsg(OtpErlangTuple t) throws IllegalArgumentException {
+    private MsgRef getRef(OtpErlangTuple t) throws IllegalArgumentException {
         if (! (t.elementAt(1) instanceof OtpErlangTuple)) {
-            throw new IllegalArgumentException("cannot determine Msg");
+            throw new IllegalArgumentException("cannot determine Ref");
         }
-        return (OtpErlangTuple) (t.elementAt(1));
+        return new MsgRef((OtpErlangTuple) (t.elementAt(1)));
     }
     
+    private OtpErlangTuple getMsg(OtpErlangTuple t) throws IllegalArgumentException {
+        if (! (t.elementAt(2) instanceof OtpErlangTuple)) {
+            throw new IllegalArgumentException("cannot determine Msg");
+        }
+        return (OtpErlangTuple) (t.elementAt(2));
+    }
+
 
     
 }

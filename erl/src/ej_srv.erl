@@ -1,6 +1,9 @@
 %% @doc This is the  Erlang server maintaining connections
 %% to the hidden java node.
 %%
+%% To use this module in your code you should als include
+%% ej.hrl.
+%%
 %% If nerlo.jar in ../java/dist, then
 %% <pre>
 %% (shell@host)1> {ok,Pid} = ej_srv:start().
@@ -13,7 +16,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([send/2]).
+-export([send/2, call/2]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -73,8 +76,19 @@ stop() ->
 
 % @doc Send a message to the peer.
 send(Tag,Msg = [_|_]) ->
-    gen_server:call(?SRVNAME, {send, Tag, Msg}).
+    Ref = ?EJMSGREF(self(),erlang:make_ref()),
+    gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}).
 
+% @doc blocking call
+call(Tag,Msg = [_|_]) ->
+    Ref = ?EJMSGREF(self(),erlang:make_ref()),
+    gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}),
+    receive
+        {From, Ref, Result} -> Result;
+        Any                 -> {any,Any}
+    after
+        2000 -> timeout
+    end.
    
 % @hidden    
 init(S) ->
@@ -82,7 +96,8 @@ init(S) ->
     case S#jsrv.worker of
         yes -> S;
         no  ->
-            log:debug(self(), "cwd: ~p", [file:get_cwd()]),
+            {ok,Cwd} = file:get_cwd(),
+            log:debug(self(), "cwd: ~p", [Cwd]),
             timer:start(),
             Peer    = handshake(S#jsrv.bindir),
             S2 = S#jsrv{peer=Peer},
@@ -93,7 +108,12 @@ init(S) ->
                                 _Any     -> Acc
                             end
                         end, [], lists:seq(1,S#jsrv.n)),
-            S2#jsrv{workers=Workers}
+            Bindir = 
+                if 
+                    S2#jsrv.bindir =:= ?BINDIR -> Cwd;
+                    true                       -> S2#jsrv.bindir
+                end,
+            S2#jsrv{workers=Workers,bindir=Bindir}
     end,
     log:info(self(), "~p initialized with state ~w", [?MODULE, S1]),
     {ok,S1}.
@@ -103,17 +123,17 @@ handle_call({job,Spec},From,S) ->
     {W, L} = f:lrot(S#jsrv.workers),
     gen_server:cast(W,{job,From,Spec}),
     {noreply, S#jsrv{workers=L}};
-handle_call({send,Tag,Msg},From,S) ->
+handle_call({send,Ref,Tag,Msg},From,S) ->
     {W, L} = f:lrot(S#jsrv.workers),
-    gen_server:cast(W,{send,From,Tag,Msg}),
+    gen_server:cast(W,{send,From,Ref,Tag,Msg}),
     {noreply, S#jsrv{workers=L}};
 handle_call(Msg,From,S) ->
     log:warn(self(), "Cannot understand call from ~p: ~p", [From,Msg]),
     {reply, {error, unknown_msg}, S}.
 
 % @hidden
-handle_cast({send,From,Tag,Msg}, S) ->
-    Result = send_peer(S#jsrv.peer,Tag,Msg),
+handle_cast({send,From,Ref,Tag,Msg}, S) ->
+    Result = send_peer(S#jsrv.peer,Ref,Tag,Msg),
     gen_server:reply(From, Result),
     {noreply, S};
 handle_cast({'STOP'}, S) ->
@@ -121,7 +141,7 @@ handle_cast({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S#jsrv.peer,S)
     end,
-    timer:send_after(500,?EJMSG(?TAG_OK,[?EJMSGPART(call,bye)])),
+    timer:send_after(500,?EJMSG(erlang:make_ref(), ?TAG_OK,[?EJMSGPART(call,bye)])),
     log:info(self(),"stopping with state: ~w", [S]),
     {noreply, S#jsrv{stopping=true}};
 handle_cast(Msg,S) ->
@@ -129,16 +149,19 @@ handle_cast(Msg,S) ->
     {noreply, S}.
 
 % @hidden
-handle_info({From,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
-    % TODO only allow from peer
-    log:debug(self(), "got handshake from: ~p", [From]),
-    {noreply, S#jsrv{peer=From}};
+% port messages
 handle_info({Port,{data,"\n"}},S) when is_port(Port) ->
     {noreply,S};
 handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     log:info(self(),"port says: ~p", [Msg]),
     {noreply,S};
-handle_info({From,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
+% ej_srv messages
+handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
+    % TODO check Ref
+    log:debug(self(), "got handshake from: ~p", [From]),
+    {noreply, S#jsrv{peer=From}};
+handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
+    % TODO check Ref
     case S#jsrv.stopping of
         false -> 
             log:warn(self(), "ignore 'bye' while not in stopping state: ~p", [From]),
@@ -156,6 +179,13 @@ handle_info({'STOP'},S) ->
         no  -> 
             {noreply,S}
     end;
+% messages to be routed to client
+handle_info({From,Ref,Msg},S) ->
+    % TODO check Ref
+    log:debug(self(), "got result: ~p ~p ~p", [From,Ref,Msg]),
+    {Client,Id} = Ref,
+    Client ! {self(),Ref,Msg},
+    {noreply, S};
 handle_info(Msg,S) ->
     log:info(self(),"info: ~p", [Msg]),
     {noreply,S}.
@@ -171,6 +201,14 @@ code_change(_OldVsn, S, _Extra) ->
 
 %% ------ PRIVATE PARTS -----
 
+send_peer(Peer,Ref,Tag,Msg) ->
+    % TODO return answer properly to client
+    log:debug(self(), "send_peer: ~p", [?EJMSG(Ref,Tag,Msg)]),
+    Peer ! ?EJMSG(Ref,Tag,Msg).
+
+start_worker(S) ->
+    gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
+
 handshake(Bindir) ->
     Args = "-peer " ++ atom_to_list(node())
          ++ " -sname " ++ ?PEERSTR
@@ -182,19 +220,11 @@ handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
     log:info(self(), "send handshake to: ~p", [Peer]),
-    send_peer(Peer, ?TAG_NODE, [?EJMSGPART(call,handshake)]),
+    send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,handshake)]),
     Peer.
-
-send_peer(Peer,Tag,Msg) ->
-    % TODO return answer properly to client
-    log:debug(self(), "send to peer: ~p", [?EJMSG(Tag,Msg)]),
-    Peer ! ?EJMSG(Tag,Msg).
-
-start_worker(S) ->
-    gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
     
 shutdown(Peer,S) ->
-    send_peer(Peer, ?TAG_NODE, [?EJMSGPART(call,die)]),
+    send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,die)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 
    
