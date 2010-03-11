@@ -84,7 +84,7 @@ call(Tag,Msg = [_|_],Timeout) ->
     Ref = ?EJMSGREF(self(),erlang:make_ref()),
     gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}),
     receive
-        {From, Ref, Result} -> Result
+        {_From, Ref, Result} -> Result
     after
         Timeout * 1000 -> {error,timeout}
     end.
@@ -96,7 +96,6 @@ init(S) ->
         yes -> S;
         no  ->
             {ok,Cwd} = file:get_cwd(),
-            log:debug(self(), "cwd: ~p", [Cwd]),
             timer:start(),
             Bindir = 
                 if 
@@ -157,7 +156,7 @@ handle_info({Port,{data,Msg}},S) when is_port(Port) ->
 % ej_srv messages
 handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
     % TODO check Ref
-    log:debug(self(), "got handshake from: ~p", [From]),
+    log:debug(self(), "info handshake from: ~p", [From]),
     {noreply, S#jsrv{peer=From}};
 handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
     % TODO check Ref
@@ -179,7 +178,7 @@ handle_info({'STOP'},S) ->
             {noreply,S}
     end;
 % messages to be routed to client
-handle_info({From,Ref={Client,Id},Msg},S) ->
+handle_info({From,Ref={Client,_Id},Msg},S) ->
     log:debug(self(), "got result: ~p ~p ~p", [From,Ref,Msg]),
     Client ! {self(),Ref,Msg},
     {noreply, S};
@@ -209,16 +208,16 @@ start_worker(S) ->
 handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
-    case subsequent_handshake(Peer) of
+    case quick_handshake(Peer) of
         {ok,From}         -> From;
-        {error,no_answer} -> first_handshake(Peer,Bindir)
+        {error,no_answer} -> full_handshake(Peer,Bindir)
     end.
     
-subsequent_handshake(Peer) ->
-    log:info(self(), "subsequent handshake to: ~p", [Peer]),
+quick_handshake(Peer) ->
+    log:info(self(), "quick handshake to: ~p", [Peer]),
     run_handshake(Peer).
 
-first_handshake(Peer,Bindir) ->
+full_handshake(Peer,Bindir) ->
     Args = "-peer " ++ atom_to_list(node())
         ++ " -sname " ++ ?PEERSTR
         ++ " -cookie " ++ atom_to_list(erlang:get_cookie()),
@@ -226,8 +225,12 @@ first_handshake(Peer,Bindir) ->
     log:info(self(), "open port to org.ister.ej.Node: ~p", [Cmd]),
     erlang:open_port({spawn, Cmd},[]),
     timer:sleep(500),
-    log:info(self(), "first handshake to: ~p", [Peer]),
-    run_handshake(Peer).
+    log:info(self(), "full handshake to: ~p", [Peer]),
+    case run_handshake(Peer) of
+        {ok,From}         -> From;
+        {error,no_answer} -> Peer
+    end.
+    
 
 run_handshake(Peer) ->
     Ref = ?EJMSGREF(self(),erlang:make_ref()),
@@ -242,6 +245,7 @@ run_handshake(Peer) ->
             {error,no_answer}
     end.
 
+%% TODO block and wait for answer right here
 shutdown(Peer,S) ->
     send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
