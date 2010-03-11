@@ -36,12 +36,13 @@
 -define(BINDIR, ".").
 -define(JNODEBIN, "jnode").
 
--record(jsrv, {workers = []
-              ,worker  = no
-              ,n       = 0
-              ,peer    = null
-              ,bindir  = ?BINDIR
-              ,stopping= false
+-record(jsrv, {workers  = []
+              ,worker   = no
+              ,n        = 0
+              ,peer     = null
+              ,bindir   = ?BINDIR
+              ,stopping = false
+              ,hshake   = false
               }).
 
 start() ->
@@ -102,7 +103,7 @@ init(S) ->
                     S#jsrv.bindir =:= ?BINDIR -> Cwd;
                     true                      -> S#jsrv.bindir
                 end,
-            Peer    = handshake(Bindir),
+            Peer = handshake(Bindir),
             S2 = S#jsrv{peer=Peer},
             Workers =
             lists:foldl(fun(_I,Acc) -> 
@@ -204,25 +205,43 @@ send_peer(Peer,Ref,Tag,Msg) ->
 start_worker(S) ->
     gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
 
-% TODO first check for running java node
-% if ej_srv unconditionally died it had no
-% chance to send a shutdown to the peer
-% but supervisor restarts leaving a
-% zombie JVM in the backend
+
 handshake(Bindir) ->
-    Args = "-peer " ++ atom_to_list(node())
-         ++ " -sname " ++ ?PEERSTR
-         ++ " -cookie " ++ atom_to_list(erlang:get_cookie()),
-    Cmd  = Bindir ++ "/" ++ ?JNODEBIN ++ " " ++ Args ++ " &",
-    log:info(self(), "starting JNode: ~p", [Cmd]),
-    erlang:open_port({spawn, Cmd},[]),
-    timer:sleep(500),
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
-    log:info(self(), "send handshake to: ~p", [Peer]),
-    send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,handshake)]),
-    Peer.
+    case subsequent_handshake(Peer) of
+        {ok,From}         -> From;
+        {error,no_answer} -> first_handshake(Peer,Bindir)
+    end.
     
+subsequent_handshake(Peer) ->
+    log:info(self(), "subsequent handshake to: ~p", [Peer]),
+    run_handshake(Peer).
+
+first_handshake(Peer,Bindir) ->
+    Args = "-peer " ++ atom_to_list(node())
+        ++ " -sname " ++ ?PEERSTR
+        ++ " -cookie " ++ atom_to_list(erlang:get_cookie()),
+    Cmd  = Bindir ++ "/" ++ ?JNODEBIN ++ " " ++ Args ++ " &",
+    log:info(self(), "open port to org.ister.ej.Node: ~p", [Cmd]),
+    erlang:open_port({spawn, Cmd},[]),
+    timer:sleep(500),
+    log:info(self(), "first handshake to: ~p", [Peer]),
+    run_handshake(Peer).
+
+run_handshake(Peer) ->
+    Ref = ?EJMSGREF(self(),erlang:make_ref()),
+    send_peer(Peer, Ref, ?TAG_NODE, [?EJMSGPART(call,handshake)]),
+    receive
+        {From,Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}} -> 
+            log:info(self(), "got handshake from: ~p", [From]),
+            {ok,From}
+    after
+        250 -> 
+            log:info(self(), "handshake timeout", []),
+            {error,no_answer}
+    end.
+
 shutdown(Peer,S) ->
     send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).

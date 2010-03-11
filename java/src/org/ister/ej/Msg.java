@@ -203,6 +203,11 @@ public class Msg {
 		return this.msg.elementAt(i);
 	}
 	
+	@Override
+	public String toString() {
+		return toTuple().toString();
+	}
+	
 	/**
 	 * Factory method to create an immutable JMsg from a HashMap.
 	 * 

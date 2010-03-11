@@ -129,7 +129,9 @@ public class Node {
     		log.error("cannot send, have no pid of peer");
     		return;
     	}
-    	this.mbox.send(this.peerpid, msg.toTuple());
+    	OtpErlangTuple t = msg.toTuple();
+    	log.debug("sending to " + this.peerpid + ": " + t.toString());
+    	this.mbox.send(this.peerpid, t);
     }
 	
 	/**
@@ -145,6 +147,11 @@ public class Node {
 
 	
     private void processMsg(Msg msg) throws Exception {
+    	OtpErlangPid pid = msg.getFrom();
+    	if (!pid.node().equals(this.peernode)) {
+    		log.error("message not allowed from: " + pid.toString());
+    		return;
+    	}
     	MsgTag tag = msg.getTag();
     	if (tag.equals(MsgTag.NODE)) {
     		if        (msg.match("call", "handshake")) {
@@ -152,7 +159,7 @@ public class Node {
     		} else if (msg.match("call", "shutdown")) {
 	            shutdown(msg, node);
     		} else {
-    			log.warn("unhandled NODE message from " + msg.getFrom().toString() + ": " + msg.toString());
+    			log.warn("unhandled NODE message: " + msg.toString());
     		}
     	} else {
     		this.handler.handle(msg);
@@ -160,12 +167,10 @@ public class Node {
     }
     
     private void handshake(Msg msg) {
-    	if (this.peerpid != null) return;
-    	// dangerous; more sender checks needed
     	this.peerpid = msg.getFrom();
     	log.info("handshake from: " + msg.getFrom().toString());
     	try {
-	    	Map<String, Object> map = new HashMap<String, Object>(2);
+	    	Map<String, Object> map = new HashMap<String, Object>(1);
 	        map.put("call", "handshake");
 	        Msg answer = Msg.answer(this.self, MsgTag.OK, map, msg);
 	        sendPeer(answer);
@@ -178,7 +183,7 @@ public class Node {
     	log.info("shutdown request from: " + msg.getFrom().toString());
     	this.handler.shutdown();
         try {
-	    	Map<String, Object> map = new HashMap<String, Object>(2);
+	    	Map<String, Object> map = new HashMap<String, Object>(1);
 	        map.put("call", "bye");
 	        Msg answer = Msg.answer(this.self, MsgTag.OK, map, msg);
 	        sendPeer(answer);
