@@ -5,7 +5,7 @@
 
 -module(ej_app).
 -behaviour(application).
--export([start/2,prep_stop/1,stop/1,boot/0,stop/0]).
+-export([start/0,start/2,prep_stop/1,stop/1,stop/0]).
 
 -author("Ingo Schramm").
 
@@ -14,7 +14,7 @@
 
 -define(APPNAME, ej).
 
-boot() ->
+start() ->
     application:start(?APPNAME).
 
 stop() ->

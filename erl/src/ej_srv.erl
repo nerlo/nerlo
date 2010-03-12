@@ -1,13 +1,15 @@
-%% @doc This is the  Erlang server maintaining connections
-%% to the hidden java node.
+%% @doc This is the Erlang server maintaining connections
+%% to the hidden Java node.
+%% 
+%% This one is trapping exists. You should always use ej_srv:stop()
+%% to shutdown the server and the linked Java node. If the Java 
+%% node dies it will be restarted. 
 %%
-%% To use this module in your code you should als include
-%% ej.hrl.
+%% To use this module in your code you should include ej.hrl.
 %%
-%% If nerlo.jar in ../java/dist, then
 %% <pre>
 %% (shell@host)1> {ok,Pid} = ej_srv:start().
-%% (shell@host)2> ej_srv:send(job).
+%% (shell@host)2> ej_srv:send(call, [call, job]).
 %% (shell@host)3> ej_srv:stop().
 %% </pre>
 %% @author Ingo Schramm
@@ -28,6 +30,10 @@
 -include("ej.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-ifdef(DEBUG).
+-export([bad/0]).
+-endif. 
+
 -define(DEFAULT_N, erlang:system_info(schedulers_online) * 2).
 -define(SRVNAME, ?MODULE).
 -define(STARTSPEC, {local, ?SRVNAME}).
@@ -42,7 +48,6 @@
               ,peer     = null
               ,bindir   = ?BINDIR
               ,stopping = false
-              ,hshake   = false
               }).
 
 start() ->
@@ -75,7 +80,7 @@ send(Tag,Msg = [_|_]) ->
 % @doc Send a message to the peer and wait for an answer.
 % This runs with a default timeout of 10 seconds.
 call(Tag,Msg) ->
-    call(Tag,Msg,10).
+    call(Tag,Msg,10).       
 
 % @doc Send a message to the peer and wait for an answer.
 % After Timeout seconds {error,timeout} will be returned.
@@ -88,6 +93,11 @@ call(Tag,Msg = [_|_],Timeout) ->
     after
         Timeout * 1000 -> {error,timeout}
     end.
+
+-ifdef(DEBUG).
+bad() -> 
+    gen_server:call(?SRVNAME, {bad}).
+-endif.
    
 % @hidden    
 init(S) ->
@@ -95,6 +105,7 @@ init(S) ->
     case S#jsrv.worker of
         yes -> S;
         no  ->
+            process_flag(trap_exit, true),
             {ok,Cwd} = file:get_cwd(),
             timer:start(),
             Bindir = 
@@ -103,6 +114,10 @@ init(S) ->
                     true                      -> S#jsrv.bindir
                 end,
             Peer = handshake(Bindir),
+            if
+                is_pid(Peer) -> erlang:link(Peer);
+                true         -> nop
+            end,
             S2 = S#jsrv{peer=Peer},
             Workers =
             lists:foldl(fun(_I,Acc) -> 
@@ -125,6 +140,9 @@ handle_call({send,Ref,Tag,Msg},From,S) ->
     {W, L} = f:lrot(S#jsrv.workers),
     gen_server:cast(W,{send,From,Ref,Tag,Msg}),
     {noreply, S#jsrv{workers=L}};
+handle_call({bad},From,S) ->
+    erlang:foobar(),
+    {noreply,S};
 handle_call(Msg,From,S) ->
     log:warn(self(), "Cannot understand call from ~p: ~p", [From,Msg]),
     {reply, {error, unknown_msg}, S}.
@@ -169,6 +187,20 @@ handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
             log:info(self(), "'bye' triggered: ~p", [From]),
             {stop, normal, S}
     end;
+handle_info(Msg={'EXIT', Pid, Reason},S) ->
+    log:warn(self(), "EXIT: ~p", [Msg]),
+    Peer =  S#jsrv.peer,
+    if 
+        is_port(Pid) -> handshake(S#jsrv.bindir);
+        true         -> 
+            case Msg of
+                {'EXIT', Peer, noconnection} ->
+                    handshake(S#jsrv.bindir);
+                Any ->
+                    log:debug(self(), "don't know how to handle exit: ~p", [Msg])
+            end
+    end,
+    {noreply, S}; 
 handle_info({'STOP'},S) ->
     case S#jsrv.worker of
         yes -> 
@@ -240,7 +272,7 @@ run_handshake(Peer) ->
             log:info(self(), "got handshake from: ~p", [From]),
             {ok,From}
     after
-        250 -> 
+        1000 -> 
             log:info(self(), "handshake timeout", []),
             {error,no_answer}
     end.
