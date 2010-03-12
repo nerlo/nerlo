@@ -51,6 +51,8 @@
               ,stopping = false
               }).
 
+%% ------ PUBLIC -----
+
 start() ->
     start(?DEFAULT_N).
 
@@ -74,8 +76,7 @@ stop() ->
 
 % @doc Send a message to the peer and return immediately.
 send(Tag,Msg = [_|_]) ->
-    Ref = ?EJMSGREF(self(),erlang:make_ref()),
-    gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}),
+    gen_server:call(?SRVNAME, {send, get_ref(), Tag, Msg}),
     ok.
 
 % @doc Send a message to the peer and wait for an answer.
@@ -87,8 +88,7 @@ call(Tag,Msg) ->
 % After Timeout seconds {error,timeout} will be returned.
 % Set Timeout to 'infinity' to wait forever.
 call(Tag,Msg = [_|_],Timeout) ->
-    Ref = ?EJMSGREF(self(),erlang:make_ref()),
-    gen_server:call(?SRVNAME, {send, Ref, Tag, Msg}),
+    gen_server:call(?SRVNAME, {send, Ref=get_ref(), Tag, Msg}),
     receive
         {_From, Ref, Result} -> Result
     after
@@ -100,6 +100,10 @@ call(Tag,Msg = [_|_],Timeout) ->
 % particular channel.
 ping() ->
     gen_server:call(?SRVNAME, {ping}).
+
+
+%% ------ PRIVATE -----
+
 
 -ifdef(DEBUG).
 bad() -> 
@@ -121,10 +125,6 @@ init(S) ->
                     true                      -> S#jsrv.bindir
                 end,
             Peer = handshake(Bindir),
-            if
-                is_pid(Peer) -> erlang:link(Peer);
-                true         -> nop
-            end,
             S2 = S#jsrv{peer=Peer},
             Workers =
             lists:foldl(fun(_I,Acc) -> 
@@ -167,7 +167,6 @@ handle_cast({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S#jsrv.peer,S)
     end,
-    timer:send_after(500,?EJMSG(erlang:make_ref(), ?TAG_OK,[?EJMSGPART(call,bye)])),
     log:info(self(),"stopping with state: ~w", [S]),
     {noreply, S#jsrv{stopping=true}};
 handle_cast(Msg,S) ->
@@ -183,34 +182,28 @@ handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     {noreply,S};
 % ej_srv messages
 handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
-    % TODO check Ref
     log:debug(self(), "info handshake from: ~p", [From]),
     {noreply, S#jsrv{peer=From}};
-handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
-    % TODO check Ref
-    case S#jsrv.stopping of
-        false -> 
-            log:warn(self(), "ignore 'bye' while not in stopping state: ~p", [From]),
-            {noreply,S};
-        true  ->
-            % TODO only allow from peer and self()
-            log:info(self(), "'bye' triggered: ~p", [From]),
-            {stop, normal, S}
-    end;
 handle_info(Msg={'EXIT', Pid, Reason},S) ->
     log:warn(self(), "EXIT from ~w with reason: ~w", [Pid,Reason]),
     Peer =  S#jsrv.peer,
+    S1 =
     if 
-        is_port(Pid) -> handshake(S#jsrv.bindir);
+        is_port(Pid) -> S;
         true         -> 
             case Msg of
                 {'EXIT', Peer, noconnection} ->
-                    handshake(S#jsrv.bindir);
+                    case S#jsrv.stopping of
+                        true  -> S;
+                        false -> 
+                            S#jsrv{peer=handshake(S#jsrv.bindir)}
+                    end;
                 Any ->
-                    log:debug(self(), "don't know how to handle exit: ~w", [Any])
+                    log:debug(self(), "don't know how to handle exit: ~w", [Any]),
+                    S
             end
     end,
-    {noreply, S}; 
+    {noreply, S1}; 
 handle_info({'STOP'},S) ->
     case S#jsrv.worker of
         yes -> 
@@ -263,26 +256,29 @@ quick_handshake(Peer) ->
     run_handshake(Peer).
 
 full_handshake(Peer,Bindir) ->
+    log:info(self(), "full handshake to: ~p", [Peer]),
+    port(Bindir),
+    timer:sleep(500),
+    case run_handshake(Peer) of
+        {ok,From}         -> From;
+        {error,no_answer} -> Peer
+    end.
+
+port(Bindir) ->
     Args = "-peer " ++ atom_to_list(node())
         ++ " -sname " ++ ?PEERSTR
         ++ " -cookie " ++ atom_to_list(erlang:get_cookie()),
     Cmd  = Bindir ++ "/" ++ ?JNODEBIN ++ " " ++ Args ++ " &",
     log:info(self(), "open port to org.ister.ej.Node: ~p", [Cmd]),
-    erlang:open_port({spawn, Cmd},[]),
-    timer:sleep(500),
-    log:info(self(), "full handshake to: ~p", [Peer]),
-    case run_handshake(Peer) of
-        {ok,From}         -> From;
-        {error,no_answer} -> Peer
-    end.
-    
+    Port = erlang:open_port({spawn, Cmd},[]),
+    log:info(self(), "port: ~p", [Port]).
 
 run_handshake(Peer) ->
-    Ref = ?EJMSGREF(self(),erlang:make_ref()),
-    send_peer(Peer, Ref, ?TAG_NODE, [?EJMSGPART(call,handshake)]),
+    send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,handshake)]),
     receive
         {From,Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}} -> 
             log:info(self(), "got handshake from: ~p", [From]),
+            erlang:link(From),
             {ok,From}
     after
         ?BLOCKING_TIMEOUT -> 
@@ -290,10 +286,18 @@ run_handshake(Peer) ->
             {error,no_answer}
     end.
 
-%% TODO block and wait for answer right here
 shutdown(Peer,S) ->
-    send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
-    lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
+    send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
+    lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers),
+    receive
+        {Peer,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}} -> 
+            log:info(self(), "shutdown confirmed by peer", []),
+            ok
+    after
+        ?BLOCKING_TIMEOUT ->
+            log:error(self(), "shutdown timeout: no ok from peer", []),
+            well
+    end.
 
 send_ping(Peer) ->
     send_peer(Peer,Ref=get_ref(),?TAG_NODE,Msg=[?EJMSGPART(call,ping)]),
