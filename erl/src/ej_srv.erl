@@ -43,13 +43,13 @@
 -define(JNODEBIN, "jnode").
 -define(BLOCKING_TIMEOUT, 1000).
 
--record(jsrv, {workers  = []
-              ,worker   = no
-              ,n        = 0
-              ,peer     = null
-              ,bindir   = ?BINDIR
-              ,stopping = false
-              }).
+-record(ej, {workers  = []
+            ,worker   = no
+            ,n        = 0
+            ,peer     = null
+            ,bindir   = ?BINDIR
+            ,stopping = false
+            }).
 
 %% ------ PUBLIC -----
 
@@ -57,19 +57,19 @@ start() ->
     start(?DEFAULT_N).
 
 start(N) ->
-    gen_server:start(?STARTSPEC, ?MODULE, #jsrv{n=N}, []).
+    gen_server:start(?STARTSPEC, ?MODULE, #ej{n=N}, []).
 
 start(N,Bindir) ->
-    gen_server:start(?STARTSPEC, ?MODULE, #jsrv{n=N,bindir=Bindir}, []).
+    gen_server:start(?STARTSPEC, ?MODULE, #ej{n=N,bindir=Bindir}, []).
 
 start_link() ->
     start_link(?DEFAULT_N). 
     
 start_link(N) ->
-    gen_server:start_link(?STARTSPEC, ?MODULE, #jsrv{n=N}, []).
+    gen_server:start_link(?STARTSPEC, ?MODULE, #ej{n=N}, []).
 
 start_link(N,Bindir) ->
-    gen_server:start_link(?STARTSPEC, ?MODULE, #jsrv{n=N,bindir=Bindir}, []).
+    gen_server:start_link(?STARTSPEC, ?MODULE, #ej{n=N,bindir=Bindir}, []).
 
 stop() ->
     gen_server:cast(?SRVNAME, {'STOP'}).
@@ -102,75 +102,52 @@ ping() ->
     gen_server:call(?SRVNAME, {ping}).
 
 
-%% ------ PRIVATE -----
+%% ------ GENERIC -----
 
 
--ifdef(DEBUG).
-bad() -> 
-    gen_server:call(?SRVNAME, {bad}).
--endif.
-   
 % @hidden    
 init(S) ->
     S1 =
-    case S#jsrv.worker of
+    case S#ej.worker of
         yes -> S;
-        no  ->
-            process_flag(trap_exit, true),
-            {ok,Cwd} = file:get_cwd(),
-            timer:start(),
-            Bindir = 
-                if 
-                    S#jsrv.bindir =:= ?BINDIR -> Cwd;
-                    true                      -> S#jsrv.bindir
-                end,
-            Peer = handshake(Bindir),
-            S2 = S#jsrv{peer=Peer},
-            Workers =
-            lists:foldl(fun(_I,Acc) -> 
-                            case start_worker(S2) of
-                                {ok,Pid} -> [Pid|Acc];
-                                _Any     -> Acc
-                            end
-                        end, [], lists:seq(1,S#jsrv.n)),
-            S2#jsrv{workers=Workers,bindir=Bindir}
+        no  -> initialize(S)
     end,
     log:info(self(), "~w initialized with state ~w", [?MODULE, S1]),
     {ok,S1}.
 
 % @hidden     
 handle_call({job,Spec},From,S) ->
-    {W, L} = f:lrot(S#jsrv.workers),
+    {W, L} = f:lrot(S#ej.workers),
     gen_server:cast(W,{job,From,Spec}),
-    {noreply, S#jsrv{workers=L}};
+    {noreply, S#ej{workers=L}};
 handle_call({send,Ref,Tag,Msg},From,S) ->
-    {W, L} = f:lrot(S#jsrv.workers),
+    {W, L} = f:lrot(S#ej.workers),
     gen_server:cast(W,{send,From,Ref,Tag,Msg}),
-    {noreply, S#jsrv{workers=L}};
+    {noreply, S#ej{workers=L}};
 handle_call({ping},_From,S) ->
-    Reply = send_ping(S#jsrv.peer),
+    Reply = send_ping(S#ej.peer),
     {reply, Reply,S};
 handle_call({bad},_From,S) ->
     erlang:foobar(),
     {noreply,S};
 handle_call(Msg,From,S) ->
-    log:warn(self(), "Cannot understand call from ~p: ~p", [From,Msg]),
+    log:warn(self(), "Cannot understand call from ~w: ~w", [From,Msg]),
     {reply, {error, unknown_msg}, S}.
 
 % @hidden
 handle_cast({send,From,Ref,Tag,Msg}, S) ->
-    Result = send_peer(S#jsrv.peer,Ref,Tag,Msg),
+    Result = send_peer(S#ej.peer,Ref,Tag,Msg),
     gen_server:reply(From, Result),
     {noreply, S};
 handle_cast({'STOP'}, S) ->
-    case S#jsrv.worker of
+    case S#ej.worker of
         yes -> nop;
-        no  -> shutdown(S#jsrv.peer,S)
+        no  -> shutdown(S#ej.peer,S)
     end,
     log:info(self(),"stopping with state: ~w", [S]),
-    {noreply, S#jsrv{stopping=true}};
+    {noreply, S#ej{stopping=true}};
 handle_cast(Msg,S) ->
-    log:info(self(),"cannot handle cast: ~p", [Msg]),
+    log:info(self(),"cannot handle cast: ~w", [Msg]),
     {noreply, S}.
 
 % @hidden
@@ -182,21 +159,21 @@ handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     {noreply,S};
 % ej_srv messages
 handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
-    log:debug(self(), "info handshake from: ~p", [From]),
-    {noreply, S#jsrv{peer=From}};
+    log:debug(self(), "info handshake from: ~w", [From]),
+    {noreply, S#ej{peer=From}};
 handle_info(Msg={'EXIT', Pid, Reason},S) ->
     log:warn(self(), "EXIT from ~w with reason: ~w", [Pid,Reason]),
-    Peer =  S#jsrv.peer,
+    Peer = S#ej.peer,
     S1 =
     if 
         is_port(Pid) -> S;
         true         -> 
             case Msg of
                 {'EXIT', Peer, noconnection} ->
-                    case S#jsrv.stopping of
+                    case S#ej.stopping of
                         true  -> S;
                         false -> 
-                            S#jsrv{peer=handshake(S#jsrv.bindir)}
+                            S#ej{peer=handshake(S#ej.bindir)}
                     end;
                 Any ->
                     log:debug(self(), "don't know how to handle exit: ~w", [Any]),
@@ -205,7 +182,7 @@ handle_info(Msg={'EXIT', Pid, Reason},S) ->
     end,
     {noreply, S1}; 
 handle_info({'STOP'},S) ->
-    case S#jsrv.worker of
+    case S#ej.worker of
         yes -> 
             log:info(self(),"stopping with state: ~w", [S]),
             {stop, normal, S};
@@ -233,15 +210,33 @@ code_change(_OldVsn, S, _Extra) ->
     {ok, S}.
 
 
-%% ------ PRIVATE PARTS -----
+%% ------ PRIVATE -----
 
 send_peer(Peer,Ref,Tag,Msg) ->
     log:debug(self(), "send_peer ~w: ~w", [Peer,?EJMSG(Ref,Tag,Msg)]),
     Peer ! ?EJMSG(Ref,Tag,Msg).
 
 start_worker(S) ->
-    gen_server:start(?MODULE, S#jsrv{worker=yes}, []).
+    gen_server:start(?MODULE, S#ej{worker=yes}, []).
 
+initialize(S) ->
+    process_flag(trap_exit, true),
+    {ok,Cwd} = file:get_cwd(),
+    timer:start(),
+    Bindir = 
+        if 
+            S#ej.bindir =:= ?BINDIR -> Cwd;
+            true                      -> S#ej.bindir
+        end,
+    S2 = S#ej{peer=handshake(Bindir)},
+    Workers =
+        lists:foldl(fun(_I,Acc) -> 
+                            case start_worker(S2) of
+                                {ok,Pid} -> [Pid|Acc];
+                                _Any     -> Acc
+                            end
+                    end, [], lists:seq(1,S#ej.n)),
+    S2#ej{workers=Workers,bindir=Bindir}.
 
 handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
@@ -252,11 +247,11 @@ handshake(Bindir) ->
     end.
     
 quick_handshake(Peer) ->
-    log:info(self(), "quick handshake to: ~p", [Peer]),
+    log:info(self(), "quick handshake to: ~w", [Peer]),
     run_handshake(Peer).
 
 full_handshake(Peer,Bindir) ->
-    log:info(self(), "full handshake to: ~p", [Peer]),
+    log:info(self(), "full handshake to: ~w", [Peer]),
     port(Bindir),
     timer:sleep(500),
     case run_handshake(Peer) of
@@ -271,13 +266,13 @@ port(Bindir) ->
     Cmd  = Bindir ++ "/" ++ ?JNODEBIN ++ " " ++ Args ++ " &",
     log:info(self(), "open port to org.ister.ej.Node: ~p", [Cmd]),
     Port = erlang:open_port({spawn, Cmd},[]),
-    log:info(self(), "port: ~p", [Port]).
+    log:info(self(), "port: ~w", [Port]).
 
 run_handshake(Peer) ->
     send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,handshake)]),
     receive
         {From,Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}} -> 
-            log:info(self(), "got handshake from: ~p", [From]),
+            log:info(self(), "got handshake from: ~w", [From]),
             erlang:link(From),
             {ok,From}
     after
@@ -288,7 +283,7 @@ run_handshake(Peer) ->
 
 shutdown(Peer,S) ->
     send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
-    lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers),
+    lists:map(fun(W) -> W ! {'STOP'} end, S#ej.workers),
     receive
         {Peer,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}} -> 
             log:info(self(), "shutdown confirmed by peer", []),
@@ -310,6 +305,13 @@ send_ping(Peer) ->
 
 get_ref() ->
     ?EJMSGREF(self(),erlang:make_ref()).
+
+
+-ifdef(DEBUG).
+bad() -> 
+    gen_server:call(?SRVNAME, {bad}).
+-endif.
+
 
 %% ------ TESTS ------
 
