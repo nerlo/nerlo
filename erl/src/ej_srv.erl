@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([send/2, call/2, call/3]).
+-export([send/2, call/2, call/3, ping/0]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -41,6 +41,7 @@
 -define(PEERSTR, atom_to_list(?PEERNAME)).
 -define(BINDIR, ".").
 -define(JNODEBIN, "jnode").
+-define(BLOCKING_TIMEOUT, 1000).
 
 -record(jsrv, {workers  = []
               ,worker   = no
@@ -94,6 +95,12 @@ call(Tag,Msg = [_|_],Timeout) ->
         Timeout * 1000 -> {error,timeout}
     end.
 
+% @doc Ping the peer. This will not use net_adm:ping but
+% the ej_srv message channel to the Java node to test this
+% particular channel.
+ping() ->
+    gen_server:call(?SRVNAME, {ping}).
+
 -ifdef(DEBUG).
 bad() -> 
     gen_server:call(?SRVNAME, {bad}).
@@ -128,7 +135,7 @@ init(S) ->
                         end, [], lists:seq(1,S#jsrv.n)),
             S2#jsrv{workers=Workers,bindir=Bindir}
     end,
-    log:info(self(), "~p initialized with state ~p", [?MODULE, S1]),
+    log:info(self(), "~w initialized with state ~w", [?MODULE, S1]),
     {ok,S1}.
 
 % @hidden     
@@ -140,7 +147,10 @@ handle_call({send,Ref,Tag,Msg},From,S) ->
     {W, L} = f:lrot(S#jsrv.workers),
     gen_server:cast(W,{send,From,Ref,Tag,Msg}),
     {noreply, S#jsrv{workers=L}};
-handle_call({bad},From,S) ->
+handle_call({ping},_From,S) ->
+    Reply = send_ping(S#jsrv.peer),
+    {reply, Reply,S};
+handle_call({bad},_From,S) ->
     erlang:foobar(),
     {noreply,S};
 handle_call(Msg,From,S) ->
@@ -158,7 +168,7 @@ handle_cast({'STOP'}, S) ->
         no  -> shutdown(S#jsrv.peer,S)
     end,
     timer:send_after(500,?EJMSG(erlang:make_ref(), ?TAG_OK,[?EJMSGPART(call,bye)])),
-    log:info(self(),"stopping with state: ~p", [S]),
+    log:info(self(),"stopping with state: ~w", [S]),
     {noreply, S#jsrv{stopping=true}};
 handle_cast(Msg,S) ->
     log:info(self(),"cannot handle cast: ~p", [Msg]),
@@ -172,11 +182,11 @@ handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     log:info(self(),"port says: ~p", [Msg]),
     {noreply,S};
 % ej_srv messages
-handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
+handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
     % TODO check Ref
     log:debug(self(), "info handshake from: ~p", [From]),
     {noreply, S#jsrv{peer=From}};
-handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
+handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
     % TODO check Ref
     case S#jsrv.stopping of
         false -> 
@@ -188,7 +198,7 @@ handle_info({From,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}},S) ->
             {stop, normal, S}
     end;
 handle_info(Msg={'EXIT', Pid, Reason},S) ->
-    log:warn(self(), "EXIT: ~p", [Msg]),
+    log:warn(self(), "EXIT from ~w with reason: ~w", [Pid,Reason]),
     Peer =  S#jsrv.peer,
     if 
         is_port(Pid) -> handshake(S#jsrv.bindir);
@@ -197,22 +207,25 @@ handle_info(Msg={'EXIT', Pid, Reason},S) ->
                 {'EXIT', Peer, noconnection} ->
                     handshake(S#jsrv.bindir);
                 Any ->
-                    log:debug(self(), "don't know how to handle exit: ~p", [Msg])
+                    log:debug(self(), "don't know how to handle exit: ~w", [Any])
             end
     end,
     {noreply, S}; 
 handle_info({'STOP'},S) ->
     case S#jsrv.worker of
         yes -> 
-            log:info(self(),"stopping with state: ~p", [S]),
+            log:info(self(),"stopping with state: ~w", [S]),
             {stop, normal, S};
         no  -> 
             {noreply,S}
     end;
 % messages to be routed to client
 handle_info({From,Ref={Client,_Id},Msg},S) ->
-    log:debug(self(), "got result: ~p ~p ~p", [From,Ref,Msg]),
-    Client ! {self(),Ref,Msg},
+    log:debug(self(), "got result: ~w ~w ~w", [From,Ref,Msg]),
+    if
+        Client =:= self() -> log:error(self(), "possible message loop", []);
+        true              -> Client ! {self(),Ref,Msg}
+    end,
     {noreply, S};
 handle_info(Msg,S) ->
     log:info(self(),"info: ~p", [Msg]),
@@ -230,7 +243,7 @@ code_change(_OldVsn, S, _Extra) ->
 %% ------ PRIVATE PARTS -----
 
 send_peer(Peer,Ref,Tag,Msg) ->
-    log:debug(self(), "send_peer: ~p", [?EJMSG(Ref,Tag,Msg)]),
+    log:debug(self(), "send_peer ~w: ~w", [Peer,?EJMSG(Ref,Tag,Msg)]),
     Peer ! ?EJMSG(Ref,Tag,Msg).
 
 start_worker(S) ->
@@ -272,7 +285,7 @@ run_handshake(Peer) ->
             log:info(self(), "got handshake from: ~p", [From]),
             {ok,From}
     after
-        1000 -> 
+        ?BLOCKING_TIMEOUT -> 
             log:info(self(), "handshake timeout", []),
             {error,no_answer}
     end.
@@ -282,7 +295,18 @@ shutdown(Peer,S) ->
     send_peer(Peer, ?EJMSGREF(self(),erlang:make_ref()), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#jsrv.workers).
 
-   
+send_ping(Peer) ->
+    send_peer(Peer,Ref=get_ref(),?TAG_NODE,Msg=[?EJMSGPART(call,ping)]),
+    receive
+        {Peer,Ref,{ok,Msg}} -> pong;
+        _                   -> pang
+    after
+        ?BLOCKING_TIMEOUT   -> pang
+    end.
+
+get_ref() ->
+    ?EJMSGREF(self(),erlang:make_ref()).
+
 %% ------ TESTS ------
 
 start_stop_test() ->

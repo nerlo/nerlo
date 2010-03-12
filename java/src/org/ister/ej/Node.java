@@ -158,12 +158,21 @@ public class Node {
 	            handshake(msg);
     		} else if (msg.match("call", "shutdown")) {
 	            shutdown(msg, node);
+    		} else if (msg.match("call", "ping")) {
+	            ping(msg);
     		} else {
     			log.warn("unhandled NODE message: " + msg.toString());
     		}
     	} else {
     		this.handler.handle(msg);
         }
+    }
+    
+    private void ping(Msg msg) {
+    	Map<String, Object> map = new HashMap<String, Object>(1);
+        map.put("call", "ping");
+        Msg answer = Msg.answer(this.self, MsgTag.OK, map, msg);
+        sendPeer(answer);
     }
     
     private void handshake(Msg msg) {

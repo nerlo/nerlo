@@ -4,7 +4,7 @@
 
 -module(log).
 
--export([fatal/3, err/3, warn/3, info/3, debug/3, print_log/4, do_log/4]).
+-export([fatal/3, err/3, error/3, warn/3, warning/3, info/3, debug/3, print_log/4, do_log/4]).
 
 -author("Ingo Schramm").
 
@@ -15,10 +15,14 @@
 fatal(Who, Msg, Args) ->
     do_log(Who, 'FATAL', Msg, Args),
     erlang:halt().
-    
+
+error(Who, Msg, Args) ->
+    err(Who, Msg, Args).
 err(Who, Msg, Args) ->
     do_log(Who, 'ERROR', Msg, Args).
     
+warning(Who, Msg, Args) ->
+    warn(Who, Msg, Args).
 warn(Who, Msg, Args) ->
     do_log(Who, 'WARNING', Msg, Args).
 
