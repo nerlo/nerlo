@@ -31,6 +31,8 @@ public class ErlangTransformer {
 		
 		if (o instanceof String) {
 			return new OtpErlangAtom((String) o);
+		} else if (o instanceof Boolean) {
+			return (o == Boolean.TRUE) ? new OtpErlangAtom("true") : new OtpErlangAtom("false");
 		} else if (o instanceof byte[]) {
 			return new OtpErlangBinary((byte[]) o);
 		} else if (o instanceof Integer) {
@@ -74,7 +76,12 @@ public class ErlangTransformer {
 		// Logger log = Main.getLogger();
 		// log.debug("transform: " + o.getClass().getName());
 		if (o instanceof OtpErlangAtom) {
-			return ((OtpErlangAtom) o).atomValue();
+			String value = ((OtpErlangAtom) o).atomValue();
+			if (value.equals("true") || value.equals("false")) {
+				return new Boolean(value);
+			} else {
+				return value;
+			}
 		} else if (o instanceof OtpErlangBinary) {
 			return ((OtpErlangBinary) o).binaryValue();
 		}  else if (o instanceof OtpErlangInt) {

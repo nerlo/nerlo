@@ -14,8 +14,11 @@ JDK >= 1.6.0
 Erlang >= R13B04
 GNU make
 Ant >= 1.8 (lower may work as well)
+
 commons-cli-1.2
 log4j-1.2.15
+neo4j-kernel-1.0.jar
+neo4j-index-1.0.jar
 
 NOTE: Dependency management is by hand for now. 
 Later we may use Ivy or Maven for Java dependencies.

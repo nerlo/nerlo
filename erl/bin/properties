@@ -6,6 +6,9 @@
 # ej.cookie=123456
 ej.msgHandler=org.ister.nerlo.EjMsgHandler
 
+# graphdb
+graphdb.db.path=../db
+
 # log4j properties
 log4j.rootLogger=debug, R
 

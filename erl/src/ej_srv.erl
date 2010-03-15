@@ -139,6 +139,9 @@ handle_cast({send,From,Ref,Tag,Msg}, S) ->
     Result = send_peer(S#ej.peer,Ref,Tag,Msg),
     gen_server:reply(From, Result),
     {noreply, S};
+handle_cast({set_peer, Peer}, S) ->
+    log:debug(self(), "replacing peer ~p with ~p: ", [S#ej.peer, Peer]),
+    {noreply, S#ej{peer=Peer}};
 handle_cast({'STOP'}, S) ->
     case S#ej.worker of
         yes -> nop;
@@ -167,13 +170,15 @@ handle_info(Msg={'EXIT', Pid, Reason},S) ->
     S1 =
     if 
         is_port(Pid) -> S;
-        true         -> 
+        true         -> %handle_exit(Msg,S)
             case Msg of
                 {'EXIT', Peer, noconnection} ->
                     case S#ej.stopping of
                         true  -> S;
                         false -> 
-                            S#ej{peer=handshake(S#ej.bindir)}
+                            NewPeer = handshake(S#ej.bindir),
+                            lists:map(fun(W) -> gen_server:cast(W,{set_peer,NewPeer}) end, S#ej.workers),
+                            S#ej{peer=NewPeer}
                     end;
                 Any ->
                     log:debug(self(), "don't know how to handle exit: ~w", [Any]),
@@ -293,6 +298,17 @@ shutdown(Peer,S) ->
             log:error(self(), "shutdown timeout: no ok from peer", []),
             well
     end.
+
+handle_exit({'EXIT', Peer, noconnection}, S) when Peer =:= S#ej.peer ->
+    case S#ej.stopping of
+        true  -> S;
+        false -> 
+            lists:map(fun(W) -> gen_server:cast(W,{set_peer,Peer}) end, S#ej.workers),
+            S#ej{peer=handshake(S#ej.bindir)}
+    end;
+handle_exit(Any,S) ->
+    log:debug(self(), "don't know how to handle exit: ~w", [Any]),
+    S.
 
 send_ping(Peer) ->
     send_peer(Peer,Ref=get_ref(),?TAG_NODE,Msg=[?EJMSGPART(call,ping)]),

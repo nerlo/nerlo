@@ -3,6 +3,7 @@ package org.ister.nerlo;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.log4j.Logger;
 import org.ister.ej.AbstractMsgHandler;
@@ -10,6 +11,7 @@ import org.ister.ej.Main;
 import org.ister.ej.Msg;
 import org.ister.ej.MsgTag;
 import org.ister.ej.Node;
+import org.ister.graphdb.DbMsgHandler;
 import org.ister.nerlo.example.SimpleFiber;
 
 /**
@@ -21,6 +23,15 @@ public class EjMsgHandler extends AbstractMsgHandler {
 
 	private final Logger log    = Main.getLogger();
 	private final Bundle bundle = Bundle.getInstance();
+	private final HashMap<String,AbstractMsgHandler> handlers = new HashMap<String,AbstractMsgHandler>();
+	
+	public void init(Node node) {
+		super.init(node);
+		AbstractMsgHandler gdb = new DbMsgHandler();
+		gdb.init(node);
+		handlers.put("graphdb", gdb);
+		log.info("initialized: " + this.getClass().toString());
+	}
 	
 	@Override
 	public void handle(Msg msg) {
@@ -29,13 +40,13 @@ public class EjMsgHandler extends AbstractMsgHandler {
     		if (msg.match("call", "job")) {
 	            job(msg);
 	            return;
+    		} else if (msg.match("handler", "graphdb")) {
+    			handlers.get("graphdb").handle(msg);
+    			return;
     		}
     	}
-		log.warn("unhandled message from " 
-				+ msg.getFrom().toString() 
-				+ ": " + msg.getMsg().toString()
-				+ " -- transformed paylod: "
-				+ msg.getMap().toString());
+    	
+    	logUnhandledMsg(log, msg);
 	}
 	
   @SuppressWarnings("unchecked")
@@ -53,6 +64,9 @@ public class EjMsgHandler extends AbstractMsgHandler {
 
 	@Override
 	public void shutdown() {
+		for (Entry<String, AbstractMsgHandler> e : handlers.entrySet()) {
+			e.getValue().shutdown();
+		}
 		this.bundle.shutdown();
 	}
 

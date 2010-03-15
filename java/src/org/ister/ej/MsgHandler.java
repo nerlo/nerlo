@@ -9,7 +9,7 @@ package org.ister.ej;
 public interface MsgHandler {
 	
 	public void handle(Msg msg);
-	public void setNode(Node node);
+	public void init(Node node);
 	public void shutdown();
 	
 }

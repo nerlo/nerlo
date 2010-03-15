@@ -93,7 +93,7 @@ public class Node {
 	 */
 	public void run() throws Exception {
 		
-		this.handler.setNode(this);
+		this.handler.init(this);
 		
         if (node.ping(peernode, 2000)) {
             log.info(peernode + ": pong.");
@@ -161,7 +161,7 @@ public class Node {
     		} else if (msg.match("call", "ping")) {
 	            ping(msg);
     		} else {
-    			log.warn("unhandled NODE message: " + msg.toString());
+    			AbstractMsgHandler.logUnhandledMsg(log, msg);
     		}
     	} else {
     		this.handler.handle(msg);
