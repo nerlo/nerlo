@@ -17,8 +17,11 @@ Ant >= 1.8 (lower may work as well)
 
 commons-cli-1.2
 log4j-1.2.15
+lucene-core-2.9.1.jar
+geronimo-jta_1.1_spec-1.1.1.jar
 neo4j-kernel-1.0.jar
 neo4j-index-1.0.jar
+neo4j-commons-1.0.jar
 
 NOTE: Dependency management is by hand for now. 
 Later we may use Ivy or Maven for Java dependencies.
