@@ -10,7 +10,9 @@
         ,has_db/0
         ,add_vertex/0
         ,del_vertex/1
+        ,add_undirected_edge/2
         ,add_undirected_edge/3
+        ,add_directed_edge/2
         ,add_directed_edge/3
         ,del_edge/1
         ,vertex_get_edges/1
@@ -100,12 +102,22 @@ vertex_get_properties(?VERTEX(Id)) ->
     not_implemented.
 
 % @doc Add an undirected edge.
+% This will actually add two edges, one in each direction.
 add_undirected_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B), Type) ->
     private_add_edge(Va, Vb, Type, false).
 
-% @doc Add an directed edge.
+% @doc Add an undirected edge with type EDGE.
+% This will actually add two edges, one in each direction.
+add_undirected_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B)) ->
+    private_add_edge(Va, Vb, 'EDGE', false).
+
+% @doc Add a directed edge.
 add_directed_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B), Type) ->
     private_add_edge(Va, Vb, Type, true).
+
+% @doc Add a directed edge with type EDGE.
+add_directed_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B)) ->
+    private_add_edge(Va, Vb, 'EDGE', true).
 
 private_add_edge(?VERTEX(A), ?VERTEX(B), Type, Dir) ->
     case ej_srv:call(?TAG_CALL, [?HANDLER,{call,add_edge},{a,A},{b,B},{type,Type},{dir,Dir}]) of

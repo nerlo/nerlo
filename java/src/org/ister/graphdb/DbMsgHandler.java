@@ -26,6 +26,10 @@ public class DbMsgHandler extends AbstractMsgHandler {
 		Node node = getNode();
 		MsgTag tag = msg.getTag();
 		
+		// TODO Can we do this in O(1) instead O(n)?
+		// We could have some HashMap containing call values
+		// as keys and Runnables as values (lots of...).
+		// Create these Runnables lazily but cache once instantiated.
     	if (tag.equals(MsgTag.CALL)) {
     		if (msg.match("call", "init")) {
     			Msg answer = null;
@@ -51,13 +55,19 @@ public class DbMsgHandler extends AbstractMsgHandler {
     		    Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
     		    node.sendPeer(answer);
     		    return;
-    		} else if (msg.match("call", "create_node")) {
-    			Map<String, Object> map = new HashMap<String, Object>(2);
-    		    map.put("result", this.db.createNode());
-    		    Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+    		} else if (msg.match("call", "add_vertex")) {
+    			Msg answer = null;
+    			Long id = this.db.createNode();
+    			if (id == null) {
+    				answer = errorAnswer(msg, "could_not_create");
+    			} else {
+    				Map<String, Object> map = new HashMap<String, Object>(2);
+    				map.put("result", id);
+    				answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+    			}
     		    node.sendPeer(answer);
     		    return;
-    		} else if (msg.match("call", "delete_node")) {
+    		} else if (msg.match("call", "del_vertex")) {
     			Msg answer = null;
     			if (!msg.has("id")) {
     				answer = errorAnswer(msg, "no_id_submitted");
@@ -71,6 +81,41 @@ public class DbMsgHandler extends AbstractMsgHandler {
 	    			}
     			}
     			node.sendPeer(answer);
+    		    return;
+    		} else if (msg.match("call", "add_edge")) {
+    			Msg answer = null;
+    			if (!(msg.has("a") && msg.has("b") && msg.has("type") && msg.has("dir"))) {
+    				answer = errorAnswer(msg, "data_missing");
+    			} else {
+    				Long id = this.db.addEdge(
+    							(Long)    msg.get("a"),
+    							(Long)    msg.get("b"),
+    							(String)  msg.get("type"),
+    							(Boolean) msg.get("dir"));
+    				if (id == null) {
+    					answer = errorAnswer(msg, "could_not_create");
+    				} else {
+    					Map<String, Object> map = new HashMap<String, Object>(2);
+    					map.put("result", id);
+    					answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+    				}
+    			}
+    		    node.sendPeer(answer);
+    		    return;
+    		} else if (msg.match("call", "del_edge")) {
+    			Msg answer = null;
+    			if (!msg.has("id")) {
+    				answer = errorAnswer(msg, "data_missing");
+    			} else {
+    				if (this.db.deleteEdge((Long) msg.get("id"))) {
+    					Map<String, Object> map = new HashMap<String, Object>(2);
+    					map.put("result", "ok");
+    					answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+    				} else {
+    					answer = errorAnswer(msg, "could_not_delete");
+    				}
+    			}
+    		    node.sendPeer(answer);
     		    return;
     		}
     	}

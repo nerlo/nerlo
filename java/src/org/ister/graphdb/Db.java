@@ -6,6 +6,8 @@ import org.apache.log4j.Logger;
 import org.ister.ej.Main;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.index.IndexService;
@@ -40,12 +42,12 @@ public class Db {
 		return (this.db != null);
 	}
 	
-	public long createNode() {
-		long id = -1;
+	public Long createNode() {
+		Long id = null;
 		Transaction tx = this.db.beginTx();
 		try {
 			Node node = this.db.createNode();
-			id = node.getId();
+			id = Long.valueOf(node.getId());
 			tx.success();
 		} catch (Exception e) {
 			log.error("could not create node: " + e.toString());
@@ -56,22 +58,59 @@ public class Db {
 		return id;
 	}
 	
-	public boolean deleteNode(long id) {
+	public boolean deleteNode(Long id) {
 		boolean success = false;
 		Transaction tx = this.db.beginTx();
 		try {
-			Node node = this.db.getNodeById(id) ;
+			Node node = this.db.getNodeById(id);
 			node.delete();
 			success = true;
 			tx.success();
 		} catch (Exception e) {
-			log.error("could not delete node " + id + ": " + e.toString());
+			log.error("could not delete node " + id.toString() + ": " + e.toString());
 			tx.failure();
 		} finally {
 			tx.finish();
 		}
 		return success;
 	}
+	
+	public Long addEdge(Long a, Long b, String type, Boolean direction) {
+		Long id = null;
+		Transaction tx = this.db.beginTx();
+		try {
+			Node na = this.db.getNodeById(a);
+			Node nb = this.db.getNodeById(b);
+			RelationshipType rt = null;
+			rt = Relations.valueOf(type.toUpperCase());
+			Relationship edge = na.createRelationshipTo(nb, rt);
+			id = Long.valueOf(edge.getId());
+			tx.success();
+		} catch (Exception e) {
+			log.error("could not create edge: " + e.toString());
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		return id;
+	}
+	
+	public boolean deleteEdge(Long id) {
+		boolean success = false;
+		Transaction tx = this.db.beginTx();
+		try {
+			Relationship edge = this.db.getRelationshipById(id) ;
+			edge.delete();
+			success = true;
+			tx.success();
+		} catch (Exception e) {
+			log.error("could not delete edge " + id.toString() + ": " + e.toString());
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		return success;
+	}	
 	
 	public void shutdown() {
 		if (this.index instanceof IndexService) {

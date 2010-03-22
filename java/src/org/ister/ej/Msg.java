@@ -87,7 +87,13 @@ public class Msg {
 		return false;
 	}
 	
-	
+	/**
+	 * Match a key value pair i the message.
+	 * 
+	 * @param key
+	 * @param value
+	 * @return
+	 */
 	public boolean match(String key, Object value) {
 		if (!map.containsKey(key)) {
 			return false;
@@ -95,10 +101,22 @@ public class Msg {
 		return value.equals(map.get(key));
 	}
 	
+	/**
+	 * Check if key is set in the mesage.
+	 * 
+	 * @param key
+	 * @return
+	 */
 	public boolean has(String key) {
 		return map.containsKey(key);
 	}
 	
+	/**
+	 * Get the value for key.
+	 * 
+	 * @param key
+	 * @return
+	 */
 	public Object get(String key) {
 		return map.get(key);
 	}
