@@ -166,23 +166,10 @@ handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
     {noreply, populate_peer(From,S)};
 handle_info(Msg={'EXIT', Pid, Reason},S) ->
     log:warn(self(), "EXIT from ~w with reason: ~w", [Pid,Reason]),
-    Peer = S#ej.peer,
     S1 =
-    if 
-        is_port(Pid) -> S;
-        true         -> %handle_exit(Msg,S)
-            case Msg of
-                {'EXIT', Peer, noconnection} ->
-                    case S#ej.stopping of
-                        true  -> S;
-                        false -> 
-                            NewPeer = handshake(S#ej.bindir),
-                            populate_peer(NewPeer,S)
-                    end;
-                Any ->
-                    log:debug(self(), "don't know how to handle exit: ~w", [Any]),
-                    S
-            end
+    case is_port(Pid) of
+        true  -> S;
+        false -> handle_exit(Msg,S)
     end,
     {noreply, S1}; 
 handle_info({'STOP'},S) ->
@@ -301,9 +288,9 @@ shutdown(Peer,S) ->
 handle_exit({'EXIT', Peer, noconnection}, S) when Peer =:= S#ej.peer ->
     case S#ej.stopping of
         true  -> S;
-        false -> 
-            lists:map(fun(W) -> gen_server:cast(W,{set_peer,Peer}) end, S#ej.workers),
-            S#ej{peer=handshake(S#ej.bindir)}
+        false ->
+            NewPeer = handshake(S#ej.bindir),
+            populate_peer(NewPeer,S)
     end;
 handle_exit(Any,S) ->
     log:debug(self(), "don't know how to handle exit: ~w", [Any]),
