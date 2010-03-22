@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([send/2, call/2, call/3, ping/0]).
+-export([send/2, call/2, call/3, ping/0, restart_peer/0]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -101,6 +101,8 @@ call(Tag,Msg = [_|_],Timeout) ->
 ping() ->
     gen_server:call(?SRVNAME, {ping}).
 
+restart_peer() ->
+    gen_server:call(?SRVNAME, {restart}).
 
 %% ------ GENERIC -----
 
@@ -116,10 +118,6 @@ init(S) ->
     {ok,S1}.
 
 % @hidden     
-handle_call({job,Spec},From,S) ->
-    {W, L} = f:lrot(S#ej.workers),
-    gen_server:cast(W,{job,From,Spec}),
-    {noreply, S#ej{workers=L}};
 handle_call({send,Ref,Tag,Msg},From,S) ->
     {W, L} = f:lrot(S#ej.workers),
     gen_server:cast(W,{send,From,Ref,Tag,Msg}),
@@ -127,6 +125,16 @@ handle_call({send,Ref,Tag,Msg},From,S) ->
 handle_call({ping},_From,S) ->
     Reply = send_ping(S#ej.peer),
     {reply, Reply,S};
+handle_call({restart},_From,S) ->
+    {Reply, NewS} =
+    case shutdown_peer(S#ej.peer) of
+        ok ->
+            Peer = handshake(S#ej.bindir),
+            {ok, populate_peer(Peer,S)};
+        _Any -> 
+            {{error,shutdown},S}
+    end,
+    {reply, Reply, NewS};
 handle_call({bad},_From,S) ->
     erlang:foobar(),
     {noreply,S};
@@ -273,8 +281,11 @@ run_handshake(Peer) ->
     end.
 
 shutdown(Peer,S) ->
-    send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
     lists:map(fun(W) -> W ! {'STOP'} end, S#ej.workers),
+    shutdown_peer(Peer).
+
+shutdown_peer(Peer) ->
+    send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
     receive
         {Peer,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}} -> 
             log:info(self(), "shutdown confirmed by peer", []),
