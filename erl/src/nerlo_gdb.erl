@@ -5,7 +5,27 @@
 -module(nerlo_gdb).
 
 % public interface
--export([start/0, stop/0, has_db/0, create_node/0, delete_node/1]).
+-export([start/0
+        ,stop/0
+        ,has_db/0
+        ,add_vertex/0
+        ,del_vertex/1
+        ,add_undirected_edge/3
+        ,add_directed_edge/3
+        ,del_edge/1
+        ,vertex_get_edges/1
+        ,vertex_set_property/3
+        ,vertex_del_property/2
+        ,vertex_get_property/2
+        ,vertex_get_properties/1
+        ,edge_get_adjacent_vertices/1
+        ,edge_is_directed/1
+        ,edge_set_property/3
+        ,edge_del_property/2
+        ,edge_get_property/2
+        ,edge_get_properties/1
+        ,traverse/6
+        ]).
 
 -author("Ingo Schramm").
 
@@ -14,7 +34,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(HANDLER, {handler,graphdb}).
--define(NODE(Id), {node,Id}).
+-define(VERTEX(Id), {vertex,Id}).
+-define(EDGE(Id,Type,A,B,Dir), {edge,Id,Type,A,B,Dir}).
 
 % @doc Start the database.
 start() ->
@@ -23,6 +44,7 @@ start() ->
         _Any                 -> error
     end.
 
+% @doc Stop the database.
 stop() ->
     case ej_srv:call(?TAG_CALL, [?HANDLER,{call,stop}]) of
         {ok,[{result,ok}]} -> ok;
@@ -37,29 +59,94 @@ has_db() ->
                 false          -> false;
                 {result,Value} -> Value
             end;
-        Error -> false
+        _Error -> false
     end.
-        
-create_node() ->
-    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,create_node}]) of
+
+% @doc Add a vertex.
+add_vertex() ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,add_vertex}]) of
         {ok, Data} -> 
             case lists:keyfind(result,1,Data) of
                 false          -> {error, answer_has_no_id};
-                {result,Value} -> ?NODE(Value)
+                {result,Value} -> ?VERTEX(Value)
             end;
         Error -> Error
     end.
 
-delete_node(?NODE(Id)) ->
-    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,delete_node},{id,Id}]) of
+% @doc Delete a vertex.
+del_vertex(?VERTEX(Id)) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,del_vertex},{id,Id}]) of
         {ok, Data} -> 
             case lists:keyfind(result,1,Data) of
                 false          -> {error, answer_has_no_id};
                 {result,Value} -> Value
             end;
         Error -> Error
-    end.    
+    end.
 
+vertex_get_edges(?VERTEX(Id)) ->
+    not_implemented.
 
+vertex_set_property(?VERTEX(Id), Key, Val) ->
+    not_implemented.
+
+vertex_del_property(?VERTEX(Id), Key) ->
+    not_implemented.
+
+vertex_get_property(?VERTEX(Id), Key) ->
+    not_implemented.
+
+vertex_get_properties(?VERTEX(Id)) ->
+    not_implemented.
+
+% @doc Add an undirected edge.
+add_undirected_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B), Type) ->
+    private_add_edge(Va, Vb, Type, false).
+
+% @doc Add an directed edge.
+add_directed_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B), Type) ->
+    private_add_edge(Va, Vb, Type, true).
+
+private_add_edge(?VERTEX(A), ?VERTEX(B), Type, Dir) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,add_edge},{a,A},{b,B},{type,Type},{dir,Dir}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_id};
+                {result,Value} -> ?EDGE(Value,Type,A,B,Dir)
+            end;
+        Error -> Error
+    end.
+
+% @doc Delete an edge.
+del_edge(?EDGE(Id,_Type,_A,_B,_Dir)) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,del_edge},{id,Id}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_id};
+                {result,Value} -> Value
+            end;
+        Error -> Error
+    end.
+
+edge_get_adjacent_vertices(?EDGE(_Id,_Type,A,B,_Dir)) ->
+    {?VERTEX(A),?VERTEX(B)}.
+
+edge_is_directed(?EDGE(_Id,_Type,_A,_B,Dir)) ->
+    Dir.
+
+edge_set_property(?VERTEX(Id), Key, Val) ->
+    not_implemented.
+
+edge_del_property(?VERTEX(Id), Key) ->
+    not_implemented.
+
+edge_get_property(?VERTEX(Id), Key) ->
+    not_implemented.
+
+edge_get_properties(?VERTEX(Id)) ->
+    not_implemented.
+
+traverse(?VERTEX(Id), Order, Stop, Return, RelType, Dir) ->
+    not_implemented.
 
 

@@ -101,6 +101,7 @@ call(Tag,Msg = [_|_],Timeout) ->
 ping() ->
     gen_server:call(?SRVNAME, {ping}).
 
+% @doc Restart the Java node.
 restart_peer() ->
     gen_server:call(?SRVNAME, {restart}).
 
