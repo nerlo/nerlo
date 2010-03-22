@@ -2,7 +2,7 @@
 %% 
 %% @author Ingo Schramm
 
--module(nerlo_gdb).
+-module(neo4j).
 
 % public interface
 -export([start/0
