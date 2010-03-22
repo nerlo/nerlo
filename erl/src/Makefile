@@ -19,4 +19,4 @@ test: all
 	$(ERL) -detached -setcookie $(TESTCOOKIE) -sname test1@localhost -pa ../ebin
 	$(ERL) -detached -setcookie $(TESTCOOKIE) -sname test2@localhost -pa ../ebin
 	sleep 1
-	$(ERL) -noshell -setcookie $(TESTCOOKIE) -sname testmain@localhost -pa ../ebin -s $(APPLICATION) test
+	$(ERL) -noshell -setcookie $(TESTCOOKIE) -sname testmain@localhost -pa ../ebin -s test test

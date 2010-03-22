@@ -2,7 +2,7 @@
 %%
 %% @author Ingo Schramm
 
--module(nerlo).
+-module(test).
 
 -export([test/0,erlang/0]).
 
@@ -18,7 +18,7 @@ test() ->
     net_adm:ping(test2@localhost),
 
     f:test(),
-    nerlo_jsrv:test(),
+    ej_srv:test(),
 
     lists:foreach(fun(Node) -> rpc:call(Node, erlang, halt, []) end, nodes()),
     erlang:halt().
