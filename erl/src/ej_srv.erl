@@ -163,7 +163,7 @@ handle_info({Port,{data,Msg}},S) when is_port(Port) ->
 % ej_srv messages
 handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
     log:debug(self(), "info handshake from: ~w", [From]),
-    {noreply, S#ej{peer=From}};
+    {noreply, populate_peer(From,S)};
 handle_info(Msg={'EXIT', Pid, Reason},S) ->
     log:warn(self(), "EXIT from ~w with reason: ~w", [Pid,Reason]),
     Peer = S#ej.peer,
@@ -177,8 +177,7 @@ handle_info(Msg={'EXIT', Pid, Reason},S) ->
                         true  -> S;
                         false -> 
                             NewPeer = handshake(S#ej.bindir),
-                            lists:map(fun(W) -> gen_server:cast(W,{set_peer,NewPeer}) end, S#ej.workers),
-                            S#ej{peer=NewPeer}
+                            populate_peer(NewPeer,S)
                     end;
                 Any ->
                     log:debug(self(), "don't know how to handle exit: ~w", [Any]),
@@ -322,6 +321,9 @@ send_ping(Peer) ->
 get_ref() ->
     ?EJMSGREF(self(),erlang:make_ref()).
 
+populate_peer(Peer,S) ->
+    lists:map(fun(W) -> gen_server:cast(W,{set_peer,Peer}) end, S#ej.workers),
+    S#ej{peer=Peer}.
 
 -ifdef(DEBUG).
 bad() -> 
