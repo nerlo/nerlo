@@ -5,7 +5,7 @@
 -module(nerlo_gdb).
 
 % public interface
--export([start/0, has_db/0]).
+-export([start/0, stop/0, has_db/0, create_node/0]).
 
 -author("Ingo Schramm").
 
@@ -22,6 +22,12 @@ start() ->
         _Any                 -> error
     end.
 
+stop() ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,stop}]) of
+        {ok,[{result,ok}]} -> ok;
+        _Any                 -> error
+    end.
+
 % @doc Test whether a graph database is running.
 has_db() ->
     case ej_srv:call(?TAG_CALL, [?HANDLER,{call,has_db}]) of
@@ -33,4 +39,14 @@ has_db() ->
         _Any -> error
     end.
         
+create_node() ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,create_node}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> error;
+                {result,Value} -> Value
+            end;
+        _Any -> error
+    end.
+
 

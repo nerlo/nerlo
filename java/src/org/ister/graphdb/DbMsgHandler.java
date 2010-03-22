@@ -35,9 +35,22 @@ public class DbMsgHandler extends AbstractMsgHandler {
     		    Msg answer = Msg.answer(node.getSelf(), aswtag, map, msg);
     		    node.sendPeer(answer);
     		    return;
+    		} else if (msg.match("call", "stop")) {
+    			this.db.shutdown();
+    			Map<String, Object> map = new HashMap<String, Object>(2);
+    		    map.put("result", "ok");
+    		    Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+    		    node.sendPeer(answer);
+    		    return;
     		} else if (msg.match("call", "has_db")) {
     			Map<String, Object> map = new HashMap<String, Object>(2);
     		    map.put("result", this.db.hasDb());
+    		    Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+    		    node.sendPeer(answer);
+    		    return;
+    		} else if (msg.match("call", "create_node")) {
+    			Map<String, Object> map = new HashMap<String, Object>(2);
+    		    map.put("result", this.db.createNode());
     		    Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
     		    node.sendPeer(answer);
     		    return;
