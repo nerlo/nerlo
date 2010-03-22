@@ -12,6 +12,8 @@ public class MsgTag {
 	
 	private final String tag;
 	
+	private volatile int hashCode = 0;
+	
 	public static final String OK    = "ok";
 	public static final String ERROR = "error";
 	public static final String DATA  = "data";
@@ -59,4 +61,16 @@ public class MsgTag {
 			return false;
 		}
 	}
+	
+	@Override 
+	public int hashCode() {
+	    int result = hashCode;
+	    if (result == 0) {
+	        result = 17;
+	        result = 31 * result + tag.hashCode();
+	        hashCode = result;
+	    }
+	    return result;
+	}
+
 }

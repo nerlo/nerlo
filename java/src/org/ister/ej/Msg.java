@@ -35,6 +35,8 @@ public class Msg {
 	private final OtpErlangTuple msg;
 	private final Map<String, Object> map;
 	
+	private volatile int hashCode = 0;
+	
 	/**
 	 * Create message to send.
 	 * 
@@ -207,6 +209,21 @@ public class Msg {
 	public String toString() {
 		return toTuple().toString();
 	}
+	
+	@Override 
+	public int hashCode() {
+	    int result = hashCode;
+	    if (result == 0) {
+	        result = 17;
+	        result = 31 * result + from.hashCode();
+	        result = 31 * result + ref.hashCode();
+	        result = 31 * result + msg.hashCode();
+	        result = 31 * result + map.hashCode();
+	        hashCode = result;
+	    }
+	    return result;
+	}
+
 	
 	/**
 	 * Factory method to create an immutable JMsg from a HashMap.
