@@ -95,6 +95,14 @@ public class Msg {
 		return value.equals(map.get(key));
 	}
 	
+	public boolean has(String key) {
+		return map.containsKey(key);
+	}
+	
+	public Object get(String key) {
+		return map.get(key);
+	}
+	
 	/**
 	 * Get sender Pid of this message.
 	 * 

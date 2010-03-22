@@ -1,5 +1,8 @@
 package org.ister.ej;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.log4j.Logger;
 
 
@@ -21,6 +24,12 @@ public abstract class AbstractMsgHandler implements MsgHandler {
 	
 	protected final Node getNode() {
 		return this.node;
+	}
+	
+	protected Msg errorAnswer(Msg msg, String reason) {
+		Map<String, Object> map = new HashMap<String, Object>(2);
+	    map.put("reason", reason);
+	    return Msg.answer(node.getSelf(), MsgTag.ERROR, map, msg);
 	}
 	
 	protected static void logUnhandledMsg(Logger log, Msg msg) {

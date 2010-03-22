@@ -28,11 +28,14 @@ public class DbMsgHandler extends AbstractMsgHandler {
 		
     	if (tag.equals(MsgTag.CALL)) {
     		if (msg.match("call", "init")) {
-    			boolean init = this.db.init();
-    			String aswtag = init ? MsgTag.OK : MsgTag.ERROR;
-    			Map<String, Object> map = new HashMap<String, Object>(2);
-    		    map.put("result", init);
-    		    Msg answer = Msg.answer(node.getSelf(), aswtag, map, msg);
+    			Msg answer = null;
+    			if (this.db.init()) {
+    				Map<String, Object> map = new HashMap<String, Object>(2);
+	    		    map.put("result", true);
+	    		    answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+    			} else {
+    				answer = errorAnswer(msg, "no_db");
+    			}
     		    node.sendPeer(answer);
     		    return;
     		} else if (msg.match("call", "stop")) {
@@ -53,6 +56,21 @@ public class DbMsgHandler extends AbstractMsgHandler {
     		    map.put("result", this.db.createNode());
     		    Msg answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
     		    node.sendPeer(answer);
+    		    return;
+    		} else if (msg.match("call", "delete_node")) {
+    			Msg answer = null;
+    			if (!msg.has("id")) {
+    				answer = errorAnswer(msg, "no_id_submitted");
+    			} else {
+	    			if (this.db.deleteNode((Long) msg.get("id"))) {
+	    				Map<String, Object> map = new HashMap<String, Object>(2);
+	    				map.put("result", "ok");
+	    				answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+	    			} else {
+	    				answer = errorAnswer(msg, "could_not_delete");
+	    			}
+    			}
+    			node.sendPeer(answer);
     		    return;
     		}
     	}
