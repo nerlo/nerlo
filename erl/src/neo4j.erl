@@ -86,8 +86,19 @@ del_vertex(?VERTEX(Id)) ->
         Error -> Error
     end.
 
+% @doc Get the list of edges of a given vertex.
 vertex_get_edges(?VERTEX(Id)) ->
-    not_implemented.
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,vertex_get_edges},{id,Id}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_content};
+                {result,Value} -> Value
+            end;
+        Error -> Error
+    end.
+
+% vertex_map_edges(?VERTEX(Id))
+% iterate somehow ...
 
 vertex_set_property(?VERTEX(Id), Key, Val) ->
     not_implemented.

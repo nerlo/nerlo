@@ -6,7 +6,7 @@ import java.util.Map;
 import org.ister.ej.Msg;
 import org.ister.ej.MsgTag;
 import org.ister.nerlo.ExecutorException;
-import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Transaction;
 
 public class DelVertexExecutor extends AbstractGraphdbMsgExecutor {
@@ -36,7 +36,6 @@ public class DelVertexExecutor extends AbstractGraphdbMsgExecutor {
 		boolean success = false;
 		Transaction tx = this.db.beginTx();
 		try {
-			
 			org.neo4j.graphdb.Node node = this.db.getNodeById(id);
 			node.delete();
 			success = true;

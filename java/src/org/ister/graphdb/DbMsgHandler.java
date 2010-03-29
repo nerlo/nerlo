@@ -35,6 +35,7 @@ public class DbMsgHandler extends AbstractMsgHandler {
 		this.path = pwd + "/" + Main.getProperty("graphdb.db.path", "db");
 		
 		this.map.put("add_vertex", AddVertexExecutor.class);
+		this.map.put("vertex_get_edges", VertexGetEdgesExecutor.class);
 		this.map.put("del_vertex", DelVertexExecutor.class);
 		this.map.put("add_edge", AddEdgeExecutor.class);
 		this.map.put("del_edge", DelEdgeExecutor.class);
