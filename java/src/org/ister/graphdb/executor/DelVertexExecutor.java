@@ -33,22 +33,21 @@ public class DelVertexExecutor extends AbstractGraphdbMsgExecutor {
 	}
 	
 	private boolean deleteNode(Long id) {
-		throw new RuntimeException("oops");
-//		boolean success = false;
-//		Transaction tx = this.db.beginTx();
-//		try {
-//			
-//			org.neo4j.graphdb.Node node = this.db.getNodeById(id);
-//			node.delete();
-//			success = true;
-//			tx.success();
-//		} catch (Exception e) {
-//			log.error("could not delete node " + id.toString() + ": " + e.toString());
-//			tx.failure();
-//		} finally {
-//			tx.finish();
-//		}
-//		return success;
+		boolean success = false;
+		Transaction tx = this.db.beginTx();
+		try {
+			
+			org.neo4j.graphdb.Node node = this.db.getNodeById(id);
+			node.delete();
+			success = true;
+			tx.success();
+		} catch (Exception e) {
+			log.error("could not delete node " + id.toString() + ": " + e.toString());
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		return success;
 	}
 
 }
