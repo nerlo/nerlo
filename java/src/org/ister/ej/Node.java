@@ -120,6 +120,14 @@ public class Node {
 	            continue;
 	        } catch (IllegalArgumentException e) {
 	        	log.error("parsing message: " + e.toString());
+	        	continue;
+            } catch (Exception e) {
+            	String trace = "";
+            	for (StackTraceElement st : e.getStackTrace()) {
+            		trace += " -- " + st.toString();
+            	}
+            	log.fatal(e.toString() + trace);
+            	System.exit(1);
             }
         }
     }

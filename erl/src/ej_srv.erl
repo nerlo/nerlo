@@ -9,7 +9,7 @@
 %%
 %% <pre>
 %% (shell@host)1> {ok,Pid} = ej_srv:start().
-%% (shell@host)2> ej_srv:send(call, [call, job]).
+%% (shell@host)2> ej_srv:ping().
 %% (shell@host)3> ej_srv:stop().
 %% </pre>
 %% @author Ingo Schramm
@@ -250,6 +250,9 @@ quick_handshake(Peer) ->
     log:info(self(), "quick handshake to: ~w", [Peer]),
     run_handshake(Peer).
 
+% TODO we should retry handshake after opening port
+% for at least 3 times to allow first JVM startup ever
+% to be a little slower (not yet cached in the OS)
 full_handshake(Peer,Bindir) ->
     log:info(self(), "full handshake to: ~w", [Peer]),
     port(Bindir),
@@ -260,12 +263,13 @@ full_handshake(Peer,Bindir) ->
     end.
 
 port(Bindir) ->
+    % TODO pass args to open_port canonically
     Args = "-peer " ++ atom_to_list(node())
         ++ " -sname " ++ ?PEERSTR
         ++ " -cookie " ++ atom_to_list(erlang:get_cookie()),
     Cmd  = Bindir ++ "/" ++ ?JNODEBIN ++ " " ++ Args ++ " &",
     log:info(self(), "open port to org.ister.ej.Node: ~p", [Cmd]),
-    Port = erlang:open_port({spawn, Cmd},[]),
+    Port = erlang:open_port({spawn, Cmd},[stderr_to_stdout]),
     log:info(self(), "port: ~w", [Port]).
 
 run_handshake(Peer) ->
