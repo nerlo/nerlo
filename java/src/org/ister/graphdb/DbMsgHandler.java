@@ -39,8 +39,20 @@ public class DbMsgHandler extends AbstractMsgHandler {
 		this.map.put("del_vertex", DelVertexExecutor.class);
 		this.map.put("add_edge", AddEdgeExecutor.class);
 		this.map.put("del_edge", DelEdgeExecutor.class);
-
-		log.info("initialized: " + this.getClass().toString());
+		//this.map.put("set_property", AddPropertyExecutor.class);
+		
+        // almost always shutdown database
+		final DbMsgHandler hdl = this;
+        Runtime.getRuntime().addShutdownHook(
+        	new Thread(new Runnable() {
+	            public void run(){
+	                hdl.dbShutdown();
+	            }
+            })
+        );
+        log.debug("shutdown hook has been set");
+        
+        log.info("initialized: " + this.getClass().toString());
 	}
 	
 	@Override
