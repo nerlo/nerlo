@@ -67,7 +67,7 @@ handle_call(Msg,From,S) ->
 handle_cast({'STOP'}, S) ->
     case S#neo4j.worker of
         yes -> nop;
-        no  -> lists:map(fun(W) -> W ! {'STOP'} end, S#neo4j.workers)
+        no  -> shutdown(S)
     end,
     log:info(self(),"stopping with state: ~w", [S]),
     {stop, normal, S};
@@ -76,6 +76,13 @@ handle_cast(Msg,S) ->
     {noreply, S}.
 
 % @hidden
+handle_info({'STOP'}, S) ->
+    case S#neo4j.worker of
+        yes -> nop;
+        no  -> shutdown(S)
+    end,
+    log:info(self(),"stopping with state: ~w", [S]),
+    {stop, normal, S};
 handle_info(Msg,S) ->
     log:info(self(),"info: ~p", [Msg]),
     {noreply,S}.
@@ -98,11 +105,17 @@ initialize(S) ->
     S1 =
     case catch(neo4j:start()) of
         {'EXIT',Reason} -> 
-            log:error(self(), "starting neo4 failed: ~w", [Reason]),
+            log:error(self(), "starting neo4j failed: ~w", [Reason]),
             S;
-        Msg           -> 
+        Msg -> 
             log:debug(self(), "~p", [Msg]),
-            S#neo4j{db=true}
+            case neo4j:has_db() of
+                true -> S#neo4j{db=true};
+                false -> 
+                    log:error(self(), "no database available", []),
+                    erlang:send_after(100, self(), {'STOP'}),
+                    S#neo4j{db=false}
+            end
     end,
     Workers =
         lists:foldl(fun(_I,Acc) -> 
@@ -112,6 +125,10 @@ initialize(S) ->
                             end
                     end, [], lists:seq(1,S1#neo4j.n)),
     S1#neo4j{workers=Workers}.
+
+shutdown(S) ->
+    lists:map(fun(W) -> W ! {'STOP'} end, S#neo4j.workers),
+    neo4j:stop().
 
 %% ------ TESTS ------
 
