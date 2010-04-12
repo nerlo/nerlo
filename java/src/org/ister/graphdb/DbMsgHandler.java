@@ -13,6 +13,7 @@ import org.ister.ej.Node;
 import org.ister.graphdb.executor.*;
 
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.index.IndexService;
 import org.neo4j.index.lucene.LuceneIndexService;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
@@ -68,6 +69,7 @@ public class DbMsgHandler extends AbstractMsgHandler {
     		if (msg.match("call", "init")) {
     			Msg answer = null;
     			if (dbInit(this.path)) {
+    				cache.clear();
     				Map<String, Object> map = new HashMap<String, Object>(2);
 	    		    map.put("result", true);
 	    		    answer = Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
@@ -90,6 +92,10 @@ public class DbMsgHandler extends AbstractMsgHandler {
     		    node.sendPeer(answer);
     		    return;
     		} else if (msg.has("call")) {
+    			if (this.db == null || this.index == null) {
+    				node.sendPeer(errorAnswer(msg, "no_db"));
+    				return;
+    			}
     			Msg answer = null;
     			String id = (String) msg.get("call");
     			AbstractGraphdbMsgExecutor ex = getExecutor(id);
@@ -136,9 +142,13 @@ public class DbMsgHandler extends AbstractMsgHandler {
 	}
 	
 	private boolean dbInit(String path) {
-		if (this.db instanceof GraphDatabaseService) {
-			return true;
+		if (this.db == null) {
+			return runDbInit(path);
 		}
+		return true;
+	}
+	
+	private boolean runDbInit(String path) {
 		try {
 			this.db = new EmbeddedGraphDatabase(path);
 			this.index = new LuceneIndexService(this.db);
@@ -147,15 +157,17 @@ public class DbMsgHandler extends AbstractMsgHandler {
 			log.error("initialization of database failed: " + e.toString());
 			return false;
 		}
-		return true;
+		return true;		
 	}
 	
 	private void dbShutdown() {
 		if (this.index instanceof IndexService) {
 			this.index.shutdown();
+			this.index = null;
 		}
 		if (this.db instanceof GraphDatabaseService) {
 			this.db.shutdown();
+			this.db = null;
 		}
 		log.info("database shutdown completed");
 	}
