@@ -1,7 +1,10 @@
 package org.ister.graphdb.executor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.ister.ej.Msg;
 import org.ister.ej.MsgTag;
@@ -9,21 +12,21 @@ import org.ister.nerlo.ExecutorException;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Transaction;
 
-public class GetPropertyExecutor extends AbstractGraphdbMsgExecutor {
+public class GetPropertiesExecutor extends AbstractGraphdbMsgExecutor {
 
 	private final static String VERTEX = "vertex";
 	private final static String EDGE = "edge";
 	
 	@Override
 	protected boolean checkMsg(Msg msg) {
-		return (msg.has("id") && msg.has("type") && msg.has("key"));
+		return (msg.has("id") && msg.has("type"));
 	}
 
 	@Override
 	protected Msg execMsg(Msg msg) throws ExecutorException {
-		Object property = get((String)msg.get("type"), (Long) msg.get("id"), (String)msg.get("key"));
+		Object property = get((String)msg.get("type"), (Long) msg.get("id"));
 		if (property == null) {
-			throw new ExecutorException("could_not_get_property");
+			throw new ExecutorException("could_not_get_properties");
 		}
 		Map<String, Object> map = new HashMap<String, Object>(1);
 		map.put("result", property);
@@ -35,8 +38,8 @@ public class GetPropertyExecutor extends AbstractGraphdbMsgExecutor {
 		return "get_property";
 	}
 	
-	private Object get(String type, Long id, String name) throws ExecutorException {
-		Object property = null;
+	private List<Map<Integer,Object>> get(String type, Long id) throws ExecutorException {
+		ArrayList<Map<Integer,Object>> properties = new ArrayList<Map<Integer,Object>>();
 		Transaction tx = this.db.beginTx();
 		try {
 			PropertyContainer entity = null;
@@ -47,21 +50,20 @@ public class GetPropertyExecutor extends AbstractGraphdbMsgExecutor {
 			} else {
 				throw new Exception("unknown object type: " + type);
 			}
-			if (entity.hasProperty(name)) {
-				property = entity.getProperty(name);
-			} else {
-				throw new ExecutorException("no_such_property");
+			for (String k : entity.getPropertyKeys()) {
+				Map<Integer,Object> tuple = new TreeMap<Integer,Object>();
+				tuple.put(1, k);
+				tuple.put(2, entity.getProperty(k));
+				properties.add(tuple);
 			}
 			tx.success();
-		} catch (ExecutorException e) {
-			throw e;
 		} catch (Exception e) {
 			log.error("could not get property for " + type + "=" + id.toString() + ": " + e.toString());
 			tx.failure();
 		} finally {
 			tx.finish();
 		}
-		return property;
+		return properties;
 	}
 
 }
