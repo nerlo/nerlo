@@ -1,6 +1,7 @@
 package org.ister.ej;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.List;
 
@@ -23,8 +24,8 @@ public class ErlangTransformer {
 	 * Integer becomes int.
 	 * Long becomes int.
 	 * Double becomes float.
-	 * List becomes list.
-	 * TreeMap becomes tuple; Integer keys meaning position.
+	 * EjList, ArrayList becomes list.
+	 * EjMap, TreeMap becomes tuple; Integer keys meaning position.
 	 * 
 	 * @param o
 	 * @return
@@ -43,7 +44,7 @@ public class ErlangTransformer {
 			return new OtpErlangInt(((Long) o).intValue());
 		} else if (o instanceof Double) {
 			return new OtpErlangDouble(((Double) o).doubleValue());
-		} else if (o instanceof List<?>) {
+		} else if ((o instanceof EjList) || (o instanceof List<?>)) {
 			@SuppressWarnings("unchecked")
 			List<Object> list = (List<Object>) o;
 			int size = list.size();
@@ -53,7 +54,7 @@ public class ErlangTransformer {
 				xs[i] = fromJava(list.get(i));
 			}
 			return new OtpErlangList(xs);
-		} else if (o instanceof TreeMap<?,?>) {
+		} else if ((o instanceof EjTuple) || (o instanceof TreeMap<?,?>)) {
 			OtpErlangObject[] seed = new OtpErlangObject[((TreeMap<?,?>)o).size()];
 			int i = 0;
 			for (Object t : ((TreeMap<?,?>)o).values() ) {
@@ -70,8 +71,8 @@ public class ErlangTransformer {
 	 * Binary becomes byte[].
 	 * Int becomes Long.
 	 * Float becomes Double.
-	 * List becomes ArrayList.
-	 * Tuple becomes TreeMap, key=position.
+	 * List becomes EjList.
+	 * Tuple becomes EjMap, key=position.
 	 * 
 	 * Note: Since it seems not to be safe to distinguish
 	 * Strings from Lists we do not allow Strings. A String
@@ -103,19 +104,19 @@ public class ErlangTransformer {
 		} else if (o instanceof OtpErlangString) {
 			return toJava(new OtpErlangList(((OtpErlangString) o).stringValue()));
 		} else if (o instanceof OtpErlangList) {
-			ArrayList<Object> list = new ArrayList<Object>(((OtpErlangList) o).arity());
+			EjList list = new EjListImpl(((OtpErlangList) o).arity());
 			for (OtpErlangObject x : ((OtpErlangList) o).elements()) {
 				// recursion!
 				list.add(toJava(x));
 			}
 			return list;
 		} else if (o instanceof OtpErlangTuple) {
-			TreeMap<Integer, Object> map = new TreeMap<Integer, Object>();
+			EjTuple tuple = new EjTupleImpl();
 			int i=0;
 			for (OtpErlangObject t : ((OtpErlangTuple)o).elements()) {
-				map.put(i++, toJava(t));
+				tuple.put(i++, toJava(t));
 			}
-			return map;
+			return tuple;
 		}
 		
 		throw new IllegalArgumentException("cannot transform input class: " + o.getClass().getName());
