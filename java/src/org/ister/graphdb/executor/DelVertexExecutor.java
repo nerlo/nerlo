@@ -19,7 +19,7 @@ public class DelVertexExecutor extends AbstractGraphdbMsgExecutor {
 	@Override
 	protected Msg execMsg(Msg msg) throws ExecutorException {
 		if (deleteNode((Long) msg.get("id"))) {
-			Map<String, Object> map = new HashMap<String, Object>(2);
+			Map<String, Object> map = new HashMap<String, Object>(1);
 			map.put("result", "ok");
 			return Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
 		} else {

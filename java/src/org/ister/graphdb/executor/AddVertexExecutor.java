@@ -22,7 +22,7 @@ public class AddVertexExecutor extends AbstractGraphdbMsgExecutor {
 		if (id == null) {
 			throw new ExecutorException("could_not_create");
 		} else {
-			Map<String, Object> map = new HashMap<String, Object>(2);
+			Map<String, Object> map = new HashMap<String, Object>(1);
 			map.put("result", id);
 			return Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
 		}

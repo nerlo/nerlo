@@ -10,10 +10,8 @@
         ,has_db/0
         ,add_vertex/0
         ,del_vertex/1
-        ,add_undirected_edge/2
-        ,add_undirected_edge/3
-        ,add_directed_edge/2
-        ,add_directed_edge/3
+        ,add_edge/2
+        ,add_edge/3
         ,del_edge/1
         ,vertex_get_edges/1
         ,vertex_set_property/3
@@ -21,12 +19,16 @@
         ,vertex_get_property/2
         ,vertex_get_properties/1
         ,edge_get_adjacent_vertices/1
-        ,edge_is_directed/1
+        ,edge_get_start_vertex/1
+        ,edge_get_end_vertex/1
+        ,edge_get_type/1
         ,edge_set_property/3
         ,edge_del_property/2
         ,edge_get_property/2
         ,edge_get_properties/1
         ,traverse/6
+        ,order/0
+        ,size/0
         ]).
 
 -author("Ingo Schramm").
@@ -37,7 +39,7 @@
 
 -define(HANDLER, {handler,graphdb}).
 -define(VERTEX(Id), {vertex,Id}).
--define(EDGE(Id,Type,A,B,Dir), {edge,Id,Type,A,B,Dir}).
+-define(EDGE(Id,Type,A,B), {edge,Id,Type,A,B}).
 
 % @doc Start the database.
 start() ->
@@ -97,51 +99,31 @@ vertex_get_edges(?VERTEX(Id)) ->
         Error -> Error
     end.
 
-% vertex_map_edges(?VERTEX(Id))
-% iterate somehow ...
-
+% @doc Set a property at a vertex.
 vertex_set_property(?VERTEX(Id), Key, Val) ->
-    not_implemented.
+    private_set_property(vertex, Id, Key, Val).
 
 vertex_del_property(?VERTEX(Id), Key) ->
-    not_implemented.
+    private_del_property(vertex, Id, Key).
 
 vertex_get_property(?VERTEX(Id), Key) ->
-    not_implemented.
+    private_get_property(vertex, Id, Key).
 
 vertex_get_properties(?VERTEX(Id)) ->
-    not_implemented.
+    private_get_properties(vertex, Id).
 
 % @doc Add an undirected edge.
 % This will actually add two edges, one in each direction.
-add_undirected_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B), Type) ->
-    private_add_edge(Va, Vb, Type, false).
+add_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B), Type) ->
+    private_add_edge(Va, Vb, Type).
 
 % @doc Add an undirected edge with type EDGE.
 % This will actually add two edges, one in each direction.
-add_undirected_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B)) ->
-    private_add_edge(Va, Vb, 'EDGE', false).
-
-% @doc Add a directed edge.
-add_directed_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B), Type) ->
-    private_add_edge(Va, Vb, Type, true).
-
-% @doc Add a directed edge with type EDGE.
-add_directed_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B)) ->
-    private_add_edge(Va, Vb, 'EDGE', true).
-
-private_add_edge(?VERTEX(A), ?VERTEX(B), Type, Dir) ->
-    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,add_edge},{a,A},{b,B},{type,Type},{dir,Dir}]) of
-        {ok, Data} -> 
-            case lists:keyfind(result,1,Data) of
-                false          -> {error, answer_has_no_id};
-                {result,Value} -> ?EDGE(Value,Type,A,B,Dir)
-            end;
-        Error -> Error
-    end.
+add_edge(Va=?VERTEX(_A), Vb=?VERTEX(_B)) ->
+    private_add_edge(Va, Vb, 'EDGE').
 
 % @doc Delete an edge.
-del_edge(?EDGE(Id,_Type,_A,_B,_Dir)) ->
+del_edge(?EDGE(Id,_Type,_A,_B)) ->
     case ej_srv:call(?TAG_CALL, [?HANDLER,{call,del_edge},{id,Id}]) of
         {ok, Data} -> 
             case lists:keyfind(result,1,Data) of
@@ -151,25 +133,101 @@ del_edge(?EDGE(Id,_Type,_A,_B,_Dir)) ->
         Error -> Error
     end.
 
-edge_get_adjacent_vertices(?EDGE(_Id,_Type,A,B,_Dir)) ->
+% @doc Get the adjacent vertices connected by an edge.
+edge_get_adjacent_vertices(?EDGE(_Id,_Type,A,B)) ->
     {?VERTEX(A),?VERTEX(B)}.
 
-edge_is_directed(?EDGE(_Id,_Type,_A,_B,Dir)) ->
-    Dir.
+edge_get_start_vertex(Edge) ->
+    {Start,_End} = edge_get_adjacent_vertices(Edge),
+    Start.
 
-edge_set_property(?VERTEX(Id), Key, Val) ->
-    not_implemented.
+edge_get_end_vertex(Edge) ->
+    {_Start,End} = edge_get_adjacent_vertices(Edge),
+    End.
 
-edge_del_property(?VERTEX(Id), Key) ->
-    not_implemented.
+edge_get_type(?EDGE(_Id,Type,_A,_B)) ->
+    Type.
 
-edge_get_property(?VERTEX(Id), Key) ->
-    not_implemented.
+edge_set_property(?EDGE(Id,_Type,_A,_B), Key, Val) ->
+    private_set_property(edge, Id, Key, Val).
 
-edge_get_properties(?VERTEX(Id)) ->
-    not_implemented.
+edge_del_property(?EDGE(Id,_Type,_A,_B), Key) ->
+    private_del_property(edge, Id, Key).
+
+edge_get_property(?EDGE(Id,_Type,_A,_B), Key) ->
+    private_get_property(edge, Id, Key).
+
+edge_get_properties(?EDGE(Id,_Type,_A,_B)) ->
+    private_get_properties(edge, Id).
 
 traverse(?VERTEX(Id), Order, Stop, Return, RelType, Dir) ->
     not_implemented.
 
+% @doc Determine the order of the graph, the number of vertices.
+order() ->
+    not_implemented.
 
+% @doc Determine the size of the graph, the number of edges.
+size() ->
+    not_implemented.
+
+
+%% ----- PRIVATE ------
+
+private_add_edge(?VERTEX(A), ?VERTEX(B), Type) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,add_edge},{a,A},{b,B},{type,Type}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_id};
+                {result,Value} -> ?EDGE(Value,Type,A,B)
+            end;
+        Error -> Error
+    end.
+
+private_set_property(Type, Id, Key, Val) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER
+                                ,{call,set_property}
+                                ,{type,Type}
+                                ,{id,Id}
+                                ,{key,Key}
+                                ,{value,Val}]) of
+        {ok, _} -> ok;
+        Error   -> Error
+    end.
+
+private_del_property(Type, Id, Key) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER
+                                ,{call,del_property}
+                                ,{type,Type}
+                                ,{id,Id}
+                                ,{key,Key}]) of
+        {ok, _} -> ok;
+        Error   -> Error
+    end.
+
+private_get_property(Type, Id, Key) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER
+                                ,{call,get_property}
+                                ,{type,Type}
+                                ,{id,Id}
+                                ,{key,Key}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_result};
+                {result,Value} -> Value
+            end;
+        Error   -> Error
+    end.
+
+private_get_properties(Type, Id) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER
+                                ,{call,get_properties}
+                                ,{type,Type}
+                                ,{id,Id}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_result};
+                {result,Value} -> Value
+            end;
+        Error   -> Error
+    end.

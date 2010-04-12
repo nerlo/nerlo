@@ -39,7 +39,9 @@ public class DbMsgHandler extends AbstractMsgHandler {
 		this.map.put("del_vertex", DelVertexExecutor.class);
 		this.map.put("add_edge", AddEdgeExecutor.class);
 		this.map.put("del_edge", DelEdgeExecutor.class);
-		//this.map.put("set_property", AddPropertyExecutor.class);
+		this.map.put("set_property", SetPropertyExecutor.class);
+		this.map.put("del_property", DelPropertyExecutor.class);
+		this.map.put("get_property", GetPropertyExecutor.class);
 		
         // almost always shutdown database
 		final DbMsgHandler hdl = this;
@@ -153,6 +155,7 @@ public class DbMsgHandler extends AbstractMsgHandler {
 		if (this.db instanceof GraphDatabaseService) {
 			this.db.shutdown();
 		}
+		log.info("database shutdown completed");
 	}
 
 }

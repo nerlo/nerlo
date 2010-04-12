@@ -22,7 +22,7 @@ public class AddEdgeExecutor extends AbstractGraphdbMsgExecutor {
 
 	@Override
 	protected boolean checkMsg(Msg msg) {
-		return ((msg.has("a") && msg.has("b") && msg.has("type") && msg.has("dir")));
+		return ((msg.has("a") && msg.has("b") && msg.has("type")));
 	}
 
 	@Override
@@ -30,8 +30,7 @@ public class AddEdgeExecutor extends AbstractGraphdbMsgExecutor {
 		Long id = addEdge(
 					(Long)    msg.get("a"),
 					(Long)    msg.get("b"),
-					(String)  msg.get("type"),
-					(Boolean) msg.get("dir"));
+					(String)  msg.get("type"));
 		if (id == null) {
 			throw new ExecutorException("could_not_create_edge");
 		} else {
@@ -46,7 +45,7 @@ public class AddEdgeExecutor extends AbstractGraphdbMsgExecutor {
 		return "add_edge";
 	}
 	
-	private Long addEdge(Long a, Long b, String type, Boolean direction) {
+	private Long addEdge(Long a, Long b, String type) {
 		Long id = null;
 		Transaction tx = this.db.beginTx();
 		try {
