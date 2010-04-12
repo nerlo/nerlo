@@ -50,7 +50,6 @@ public class ErlangTransformer {
 			int size = list.size();
 			OtpErlangObject[] xs = new OtpErlangObject[size];
 			for (int i=0; i<size; i++) {
-				// recursion
 				xs[i] = fromJava(list.get(i));
 			}
 			return new OtpErlangList(xs);
@@ -84,8 +83,6 @@ public class ErlangTransformer {
 	 * @throws IllegalArgumentException
 	 */
 	public Object toJava(OtpErlangObject o) throws IllegalArgumentException {
-//		Logger log = Main.getLogger();
-//		log.debug("transform: " + o.getClass().getName());
 		if (o instanceof OtpErlangAtom) {
 			String value = ((OtpErlangAtom) o).atomValue();
 			if (value.equals("true") || value.equals("false")) {
@@ -106,7 +103,6 @@ public class ErlangTransformer {
 		} else if (o instanceof OtpErlangList) {
 			EjList list = new EjListImpl(((OtpErlangList) o).arity());
 			for (OtpErlangObject x : ((OtpErlangList) o).elements()) {
-				// recursion!
 				list.add(toJava(x));
 			}
 			return list;

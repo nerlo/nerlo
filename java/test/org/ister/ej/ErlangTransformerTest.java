@@ -8,6 +8,7 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.junit.After;
 import org.junit.Before;
@@ -46,8 +47,11 @@ public class ErlangTransformerTest {
 	@Test
 	public void testFromJavaEjList() {
 		EjList in = new EjListImpl();
+		in.add(1);
+		in.add("foo");
 		OtpErlangList out = (OtpErlangList) tf.fromJava(in);
 		assertTrue(out instanceof OtpErlangList);
+		assertEquals(out.arity(), 2);
 	}
 	
 	/**
@@ -56,8 +60,11 @@ public class ErlangTransformerTest {
 	@Test
 	public void testFromJavaEjMap() {
 		EjTuple in = new EjTupleImpl();
+		in.put(1, "foo");
+		in.put(2, 3);
 		OtpErlangTuple out = (OtpErlangTuple) tf.fromJava(in);
 		assertTrue(out instanceof OtpErlangTuple);
+		assertEquals(out.arity(), 2);
 	}
 	
 	/**
@@ -66,8 +73,24 @@ public class ErlangTransformerTest {
 	@Test
 	public void testFromJavaList() {
 		ArrayList<Object> in = new ArrayList<Object>();
+		in.add(1);
+		in.add("foo");
 		OtpErlangList out = (OtpErlangList) tf.fromJava(in);
 		assertTrue(out instanceof OtpErlangList);
+		assertEquals(out.arity(), 2);
+	}
+	
+	/**
+	 * Test method for {@link org.ister.ej.ErlangTransformer#fromJava(java.lang.Object)}.
+	 */
+	@Test
+	public void testFromJavaMap() {
+		Map<Integer,Object> in = new TreeMap<Integer,Object>();
+		in.put(1, "foo");
+		in.put(2, 3);
+		OtpErlangTuple out = (OtpErlangTuple) tf.fromJava(in);
+		assertTrue(out instanceof OtpErlangTuple);
+		assertEquals(out.arity(), 2);
 	}
 
 	/**
@@ -81,6 +104,7 @@ public class ErlangTransformerTest {
 		assertTrue(out instanceof EjList);
 		assertTrue(out instanceof List<?>);
 		assertTrue(out.toList() instanceof List<?>);
+		assertEquals(out.size(),2);
 	}
 	
 	/**
@@ -95,6 +119,7 @@ public class ErlangTransformerTest {
 		assertTrue(out instanceof Map<?,?>);
 		assertTrue(out.toList() instanceof List<?>);
 		assertTrue(out.toMap() instanceof Map<?,?>);
+		assertEquals(out.size(),2);
 	}
 
 }
