@@ -29,6 +29,7 @@
         ,traverse/6
         ,order/0
         ,size/0
+        ,types/0
         ]).
 
 -author("Ingo Schramm").
@@ -165,12 +166,15 @@ traverse(?VERTEX(Id), Order, Stop, Return, RelType, Dir) ->
 
 % @doc Determine the order of the graph, the number of vertices.
 order() ->
-    not_implemented.
+    private_info(order).
 
 % @doc Determine the size of the graph, the number of edges.
 size() ->
-    not_implemented.
+    private_info(size).
 
+% @doc Get a list with all used relationship types.
+types() ->
+    private_info(types).
 
 %% ----- PRIVATE ------
 
@@ -230,4 +234,14 @@ private_get_properties(Type, Id) ->
                 {result,Value} -> Value
             end;
         Error   -> Error
+    end.
+
+private_info(Item) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER,{call,info},{item,Item}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_id};
+                {result,Value} -> Value
+            end;
+        Error -> Error
     end.

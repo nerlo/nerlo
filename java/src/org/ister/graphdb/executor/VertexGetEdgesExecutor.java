@@ -9,9 +9,11 @@ import org.ister.ej.Msg;
 import org.ister.ej.MsgTag;
 import org.ister.nerlo.ExecutorException;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 
 public class VertexGetEdgesExecutor extends AbstractGraphdbMsgExecutor {
@@ -79,8 +81,7 @@ public class VertexGetEdgesExecutor extends AbstractGraphdbMsgExecutor {
 		map.put(2, r.getId());
 		map.put(3, r.getStartNode().getId());
 		map.put(4, r.getEndNode().getId());
-		map.put(5, r.getType().toString());
-		map.put(6, false);
+		map.put(5, r.getType().name());
 		return map;
 	}
 	
