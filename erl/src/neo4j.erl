@@ -26,8 +26,7 @@
         ,edge_del_property/2
         ,edge_get_property/2
         ,edge_get_properties/1
-        %,traverse/7
-        ,traverse/1
+        ,traverse/2
         ,index_add_vertex/3
         ,index_del_vertex/3
         ,index_get_vertex/2
@@ -166,12 +165,13 @@ edge_get_properties(?EDGE(Id,_Type,_A,_B)) ->
     private_get_properties(edge, Id).
 
 % neo4j:traverse(fun(Args) -> io:format("~n>>> inside fun: ~p~n", [Args]) end).
-traverse(Fun) when is_function(Fun) ->
+traverse(?VERTEX(Id), Fun) when is_function(Fun) ->
 %traverse(?VERTEX(Id), Order, Stop, Return, Type, Dir, Fun) when is_function(Fun) ->
     F = fun(Id) -> Fun(?VERTEX(Id)) end,
     Ref = ej_srv:callback(?TAG_CALL, 
                           [?HANDLER
-                           ,{call,traverse}]
+                           ,{call,traverse}
+                           ,{id,Id}]
                           ,F).
 %%                                      ,{id,Id}
 %%                                      ,{order,Order}

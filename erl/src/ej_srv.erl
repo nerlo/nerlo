@@ -349,13 +349,13 @@ populate_peer(Peer,S) ->
     S#ej{peer=Peer}.
 
 callback_loop(Ref, Fun) ->
-    Self = self(),
     receive
         {_From, Ref, [{result,Result}]} ->
             Fun(Result),
             callback_loop(Ref, Fun);
         {_From, Ref, {?TAG_OK, [{result,?EJCALLBACKSTOP}]}} ->
             ok;
+        % TODO apply timeout
         {_From, Ref, {?TAG_ERROR, [{result,?EJCALLBACKTIMEOUT}]}} ->
             {error, timeout};
         {_From, Ref, {?TAG_ERROR, Reason}} ->
