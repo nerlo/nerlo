@@ -27,6 +27,9 @@
         ,edge_get_property/2
         ,edge_get_properties/1
         ,traverse/6
+        ,index_add_vertex/3
+        ,index_del_vertex/3
+        ,index_get_vertex/2
         ,order/0
         ,size/0
         ,types/0
@@ -164,6 +167,21 @@ edge_get_properties(?EDGE(Id,_Type,_A,_B)) ->
 traverse(?VERTEX(Id), Order, Stop, Return, RelType, Dir) ->
     not_implemented.
 
+% @doc Add a vertex to the index.
+index_add_vertex(?VERTEX(Id), Key, Val) ->
+    private_index(Id, Key, Val, add).
+
+% @doc Remove a vertex from the index.
+index_del_vertex(?VERTEX(Id), Key, Val) ->
+    private_index(Id, Key, Val, del).
+
+% @doc Lookup a vertex in the index.
+index_get_vertex(Key, Val) ->
+    case private_index(0, Key, Val, lookup) of
+        Error = {error, _} -> Error;
+        Id                 -> ?VERTEX(Id)
+    end.
+
 % @doc Determine the order of the graph, the number of vertices.
 order() ->
     private_info(order).
@@ -245,4 +263,22 @@ private_info(Item) ->
             end;
         Error -> Error
     end.
+
+private_index(Id, Key, Val, Op) ->
+    case ej_srv:call(?TAG_CALL, [?HANDLER
+                                ,{call,index}
+                                ,{op,Op}
+                                ,{id,Id}
+                                ,{key,Key}
+                                ,{value,Val}]) of
+        {ok, Data} -> 
+            case lists:keyfind(result,1,Data) of
+                false          -> {error, answer_has_no_result};
+                {result,Value} -> Value
+            end;
+        Error -> Error
+    end.
+
+
+
 
