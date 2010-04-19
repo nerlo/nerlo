@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([send/2, call/2, call/3, ping/0, restart_peer/0]).
+-export([send/2, call/2, call/3, callback/2, ping/0, restart_peer/0]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -49,6 +49,7 @@
             ,peer     = null
             ,bindir   = ?BINDIR
             ,stopping = false
+            ,callbacks= null
             }).
 
 %% ------ PUBLIC -----
@@ -94,6 +95,10 @@ call(Tag,Msg = [_|_],Timeout) ->
     after
         Timeout * 1000 -> {error,timeout}
     end.
+
+callback(Tag,Msg = [_|_]) ->
+    gen_server:cast(?SRVNAME, {callback, Ref=get_ref(), Tag, Msg}),
+    Ref.
 
 % @doc Ping the peer. This will not use net_adm:ping but
 % the ej_srv message channel to the Java node to test this
@@ -151,6 +156,10 @@ handle_cast({send,From,Ref,Tag,Msg}, S) ->
 handle_cast({set_peer, Peer}, S) ->
     log:debug(self(), "replacing peer ~p with ~p: ", [S#ej.peer, Peer]),
     {noreply, S#ej{peer=Peer}};
+handle_cast({callback, Ref, Tag, Msg}, S) ->
+    log:debug(self(), "callback: ~p", [Ref]),
+    send_peer(S#ej.peer,Ref,Tag,Msg),
+    {noreply,S};
 handle_cast({'STOP'}, S) ->
     case S#ej.worker of
         yes -> nop;
@@ -190,13 +199,21 @@ handle_info({'STOP'},S) ->
             {noreply,S}
     end;
 % messages to be routed to client
-handle_info({From,Ref={Client,_Id},Msg},S) ->
-    log:debug(self(), "got result: ~w ~w ~w", [From,Ref,Msg]),
+handle_info({From,Ref={Client,_Id},M={?TAG_FRAGMENT,Msg}},S) ->
+    log:debug(self(), "got fragment: From=~w Ref=~w Msg=~w", [From,Ref,M]),
     if
         Client =:= self() -> log:error(self(), "possible message loop", []);
         true              -> Client ! {self(),Ref,Msg}
     end,
     {noreply, S};
+handle_info({From,Ref={Client,_Id},Msg},S) ->
+    log:debug(self(), "got result: From=~w Ref=~w Msg=~w", [From,Ref,Msg]),
+    if
+        Client =:= self() -> log:error(self(), "possible message loop", []);
+        true              -> Client ! {self(),Ref,Msg}
+    end,
+    {noreply, S};
+% unknown
 handle_info(Msg,S) ->
     log:info(self(),"info: ~p", [Msg]),
     {noreply,S}.
@@ -228,6 +245,7 @@ initialize(S) ->
             S#ej.bindir =:= ?BINDIR -> Cwd;
             true                      -> S#ej.bindir
         end,
+    % callbacks=ets:new(erlang:make_ref(),[])
     S2 = S#ej{peer=handshake(Bindir)},
     Workers =
         lists:foldl(fun(_I,Acc) -> 

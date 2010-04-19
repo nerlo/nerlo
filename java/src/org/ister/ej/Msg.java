@@ -278,6 +278,10 @@ public class Msg {
 	public static Msg answer(OtpErlangPid self, String tag, Map<String, Object> map, Msg request) {
 		return factory(self, request.getRef(), new MsgTag(tag), map);
 	}
+	
+	public static Msg fragment(OtpErlangPid self, Map<String, Object> map, Msg request) {
+		return factory(self, request.getRef(), new MsgTag(MsgTag.FRAGMENT), map);
+	}
     
 	/* PRIVATE */
 	

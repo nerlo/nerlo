@@ -26,7 +26,8 @@
         ,edge_del_property/2
         ,edge_get_property/2
         ,edge_get_properties/1
-        ,traverse/6
+        %,traverse/7
+        ,traverse/1
         ,index_add_vertex/3
         ,index_del_vertex/3
         ,index_get_vertex/2
@@ -164,8 +165,17 @@ edge_get_property(?EDGE(Id,_Type,_A,_B), Key) ->
 edge_get_properties(?EDGE(Id,_Type,_A,_B)) ->
     private_get_properties(edge, Id).
 
-traverse(?VERTEX(Id), Order, Stop, Return, RelType, Dir) ->
-    not_implemented.
+traverse(Fun) when is_function(Fun) ->
+%traverse(?VERTEX(Id), Order, Stop, Return, Type, Dir, Fun) when is_function(Fun) ->
+    Ref = ej_srv:callback(?TAG_CALL, [?HANDLER
+                                     ,{call,traverse}]),
+%%                                      ,{id,Id}
+%%                                      ,{order,Order}
+%%                                      ,{stop,Stop}
+%%                                      ,{return,Return}
+%%                                      ,{type,Type}
+%%                                      ,{direction,Dir}]),
+    loop(Ref, Fun).
 
 % @doc Add a vertex to the index.
 index_add_vertex(?VERTEX(Id), Key, Val) ->
@@ -279,6 +289,22 @@ private_index(Id, Key, Val, Op) ->
         Error -> Error
     end.
 
-
+% neo4j:traverse(fun(Args) -> io:format("inside fun: ~p", [Args]) end).
+loop(Ref, Fun) ->
+    Self = self(),
+    receive
+        {_From, Ref, [{result,Any}]} ->
+            Fun(Any),
+            loop(Ref, Fun);
+%%         {_From, Ref, [{result,V=?VERTEX(_Id)}]} ->
+%%             Fun(V),
+%%             loop(Ref, Fun);
+        {_From, Ref, {?TAG_OK, [{result,?EJCALLBACKSTOP}]}} ->
+            ok;
+        {_From, Ref, {?TAG_ERROR, [{result,?EJCALLBACKTIMEOUT}]}} ->
+            {error, timeout};
+        Any ->
+            {error, bogus_message_received, {self=Ref}, {answer=Any}}
+    end.
 
 

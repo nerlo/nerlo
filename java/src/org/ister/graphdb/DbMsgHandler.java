@@ -46,6 +46,7 @@ public class DbMsgHandler extends AbstractMsgHandler {
 		this.map.put("get_properties", GetPropertiesExecutor.class);
 		this.map.put("info", InfoExecutor.class);
 		this.map.put("index", IndexExecutor.class);
+		this.map.put("traverse", TraverserExecutor.class);
 		
         // almost always shutdown database
 		final DbMsgHandler hdl = this;
