@@ -165,17 +165,21 @@ edge_get_property(?EDGE(Id,_Type,_A,_B), Key) ->
 edge_get_properties(?EDGE(Id,_Type,_A,_B)) ->
     private_get_properties(edge, Id).
 
+% neo4j:traverse(fun(Args) -> io:format("~n>>> inside fun: ~p~n", [Args]) end).
 traverse(Fun) when is_function(Fun) ->
 %traverse(?VERTEX(Id), Order, Stop, Return, Type, Dir, Fun) when is_function(Fun) ->
-    Ref = ej_srv:callback(?TAG_CALL, [?HANDLER
-                                     ,{call,traverse}]),
+    F = fun(Id) -> Fun(?VERTEX(Id)) end,
+    Ref = ej_srv:callback(?TAG_CALL, 
+                          [?HANDLER
+                           ,{call,traverse}]
+                          ,F).
 %%                                      ,{id,Id}
 %%                                      ,{order,Order}
 %%                                      ,{stop,Stop}
 %%                                      ,{return,Return}
 %%                                      ,{type,Type}
 %%                                      ,{direction,Dir}]),
-    loop(Ref, Fun).
+
 
 % @doc Add a vertex to the index.
 index_add_vertex(?VERTEX(Id), Key, Val) ->
@@ -289,22 +293,21 @@ private_index(Id, Key, Val, Op) ->
         Error -> Error
     end.
 
-% neo4j:traverse(fun(Args) -> io:format("inside fun: ~p", [Args]) end).
-loop(Ref, Fun) ->
-    Self = self(),
-    receive
-        {_From, Ref, [{result,Any}]} ->
-            Fun(Any),
-            loop(Ref, Fun);
-%%         {_From, Ref, [{result,V=?VERTEX(_Id)}]} ->
-%%             Fun(V),
+
+%% loop(Ref, Fun) ->
+%%     Self = self(),
+%%     receive
+%%         {_From, Ref, [{result,Id}]} ->
+%%             Fun(?VERTEX(Id)),
 %%             loop(Ref, Fun);
-        {_From, Ref, {?TAG_OK, [{result,?EJCALLBACKSTOP}]}} ->
-            ok;
-        {_From, Ref, {?TAG_ERROR, [{result,?EJCALLBACKTIMEOUT}]}} ->
-            {error, timeout};
-        Any ->
-            {error, bogus_message_received, {self=Ref}, {answer=Any}}
-    end.
+%%         {_From, Ref, {?TAG_OK, [{result,?EJCALLBACKSTOP}]}} ->
+%%             ok;
+%%         {_From, Ref, {?TAG_ERROR, [{result,?EJCALLBACKTIMEOUT}]}} ->
+%%             {error, timeout};
+%%         {_From, Ref, {?TAG_ERROR, Reason}} ->
+%%             {error,Reason};        
+%%         Any ->
+%%             {error, bogus_message_received, {self=Ref}, {answer=Any}}
+%%     end.
 
 

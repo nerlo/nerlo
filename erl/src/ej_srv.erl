@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([send/2, call/2, call/3, callback/2, ping/0, restart_peer/0]).
+-export([send/2, call/2, call/3, callback/3, ping/0, restart_peer/0]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -96,9 +96,11 @@ call(Tag,Msg = [_|_],Timeout) ->
         Timeout * 1000 -> {error,timeout}
     end.
 
-callback(Tag,Msg = [_|_]) ->
+% @doc Set a fun to be called each time the peer sends a
+% fragmented message.
+callback(Tag,Msg = [_|_],Fun) when is_function(Fun) ->
     gen_server:cast(?SRVNAME, {callback, Ref=get_ref(), Tag, Msg}),
-    Ref.
+    callback_loop(Ref,Fun).
 
 % @doc Ping the peer. This will not use net_adm:ping but
 % the ej_srv message channel to the Java node to test this
@@ -345,6 +347,23 @@ get_ref() ->
 populate_peer(Peer,S) ->
     lists:map(fun(W) -> gen_server:cast(W,{set_peer,Peer}) end, S#ej.workers),
     S#ej{peer=Peer}.
+
+callback_loop(Ref, Fun) ->
+    Self = self(),
+    receive
+        {_From, Ref, [{result,Result}]} ->
+            Fun(Result),
+            callback_loop(Ref, Fun);
+        {_From, Ref, {?TAG_OK, [{result,?EJCALLBACKSTOP}]}} ->
+            ok;
+        {_From, Ref, {?TAG_ERROR, [{result,?EJCALLBACKTIMEOUT}]}} ->
+            {error, timeout};
+        {_From, Ref, {?TAG_ERROR, Reason}} ->
+            {error,Reason};        
+        Any ->
+            {error, bogus_message_received, {self=Ref}, {answer=Any}}
+    end.
+
 
 -ifdef(DEBUG).
 bad() -> 

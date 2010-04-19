@@ -3,6 +3,7 @@
  */
 package org.ister.ej;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -281,6 +282,11 @@ public class Msg {
 	
 	public static Msg fragment(OtpErlangPid self, Map<String, Object> map, Msg request) {
 		return factory(self, request.getRef(), new MsgTag(MsgTag.FRAGMENT), map);
+	}
+	
+	public static Msg lastFragment(OtpErlangPid self, Msg request) {
+		Map<String, Object> map = Collections.singletonMap("result", (Object)"EJCALLBACKSTOP");
+		return factory(self, request.getRef(), new MsgTag(MsgTag.OK), map);
 	}
     
 	/* PRIVATE */

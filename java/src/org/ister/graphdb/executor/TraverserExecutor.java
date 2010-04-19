@@ -22,8 +22,7 @@ public class TraverserExecutor extends AbstractGraphdbMsgExecutor {
 			Msg next = Msg.fragment(node.getSelf(), map, msg);
 			this.node.sendPeer(next);
 		}
-		Map<String, Object> map = Collections.singletonMap("result", (Object)"EJCALLBACKSTOP");
-		return Msg.answer(node.getSelf(), MsgTag.OK, map, msg);
+		return Msg.lastFragment(node.getSelf(), msg);
 	}
 
 	@Override
