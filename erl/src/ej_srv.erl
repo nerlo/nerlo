@@ -261,9 +261,16 @@ initialize(S) ->
 handshake(Bindir) ->
     {ok, Hostname} = inet:gethostname(),
     Peer = {?PEERNAME,list_to_atom(?PEERSTR ++ "@" ++ Hostname)},
+    Pid =
     case quick_handshake(Peer) of
         {ok,From}         -> From;
         {error,no_answer} -> full_handshake(Peer,Bindir)
+    end,
+    case send_ping(Pid) of
+        pong  -> Pid;
+        Error -> 
+            log:error(self(), "peer not reachable: ~w", [Error]),
+            throw({peer_does_not_answer,Error})
     end.
     
 quick_handshake(Peer) ->
