@@ -13,8 +13,7 @@
 
 
 fatal(Who, Msg, Args) ->
-    do_log(Who, 'FATAL', Msg, Args),
-    erlang:halt().
+    do_log(Who, 'FATAL', Msg, Args).
 
 error(Who, Msg, Args) ->
     err(Who, Msg, Args).
