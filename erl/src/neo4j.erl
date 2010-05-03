@@ -1,4 +1,4 @@
-%% @doc This is the Erlang side of the graph database.
+%% @doc This is the Erlang API of the graph database.
 %% 
 %% @author Ingo Schramm
 
@@ -15,6 +15,8 @@
         ,del_edge/1
         ,vertex_get_edges/1
         ,vertex_get_edges/2
+        ,vertex_get_neighbourhood/1
+        ,vertex_get_neighbourhood/2
         ,vertex_set_property/3
         ,vertex_del_property/2
         ,vertex_get_property/2
@@ -107,28 +109,28 @@ vertex_get_edges(?VERTEX(Id)) ->
 vertex_get_edges(V=?VERTEX(Id), Type) ->
     [ E || E=?EDGE(EId,T,A,B) <- vertex_get_edges(V), T =:= Type ].
 
+% @doc Get all vertices connected ith a given vertex.
 vertex_get_neighbourhood(V=?VERTEX(Id)) ->
-    lists:map(
-        fun(?EDGE(EId,T,A,B))->
-            if 
-                A =:= Id ->
-                    B;
-                true ->
-                    A
-            end
-        end, 
-        vertex_get_edges(V)).
+    get_other_nodes(Id,vertex_get_edges(V)).
+
+% @doc Get all vertices connected with a given vertex
+% by an edge of a given type.
+vertex_get_neighbourhood(V=?VERTEX(Id), Type) ->
+    get_other_nodes(Id,vertex_get_edges(V, Type)).
 
 % @doc Set a property at a vertex.
 vertex_set_property(?VERTEX(Id), Key, Val) ->
     private_set_property(vertex, Id, Key, Val).
 
+% @doc Delete a property at a vertex.
 vertex_del_property(?VERTEX(Id), Key) ->
     private_del_property(vertex, Id, Key).
 
+% @doc Get a property at a vertex.
 vertex_get_property(?VERTEX(Id), Key) ->
     private_get_property(vertex, Id, Key).
 
+% @doc Get all properties at a vertex.
 vertex_get_properties(?VERTEX(Id)) ->
     private_get_properties(vertex, Id).
 
@@ -157,26 +159,33 @@ del_edge(?EDGE(Id,_Type,_A,_B)) ->
 edge_get_adjacent_vertices(?EDGE(_Id,_Type,A,B)) ->
     {?VERTEX(A),?VERTEX(B)}.
 
+% @doc Get the start vertex of an edge.
 edge_get_start_vertex(Edge) ->
     {Start,_End} = edge_get_adjacent_vertices(Edge),
     Start.
 
+% @doch Get the end ertex of an edge.
 edge_get_end_vertex(Edge) ->
     {_Start,End} = edge_get_adjacent_vertices(Edge),
     End.
 
+% @doc Get the type of an ede.
 edge_get_type(?EDGE(_Id,Type,_A,_B)) ->
     Type.
 
+% @doc Set a property at an edge.
 edge_set_property(?EDGE(Id,_Type,_A,_B), Key, Val) ->
     private_set_property(edge, Id, Key, Val).
 
+% @doc Delete a property at an edge.
 edge_del_property(?EDGE(Id,_Type,_A,_B), Key) ->
     private_del_property(edge, Id, Key).
 
+% @doc Get a property at an edge.
 edge_get_property(?EDGE(Id,_Type,_A,_B), Key) ->
     private_get_property(edge, Id, Key).
 
+% @doc Get all properties at an edge.
 edge_get_properties(?EDGE(Id,_Type,_A,_B)) ->
     private_get_properties(edge, Id).
 
@@ -292,5 +301,13 @@ private_index(Id, Key, Val, Op) ->
         Error -> Error
     end.
 
-
+get_other_nodes(Id,Edges) ->
+    lists:map(
+        fun(?EDGE(EId,T,A,B))->
+            if 
+                A =:= Id -> ?VERTEX(B);
+                true     -> ?VERTEX(A)
+            end
+        end, 
+        Edges).
 
