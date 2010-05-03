@@ -22,6 +22,7 @@ stop() ->
 
 start(Type, Args) ->
     log:info(self(), "starting; type: ~p args: ~p", [Type,Args]),
+    application:set_env(?APPNAME, listeners, sets:new()),
     case Type of
         normal   -> ej_sup:start_link([]);
         takeover -> ok;

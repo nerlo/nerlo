@@ -18,7 +18,7 @@
 -behaviour(gen_server).
 
 % public interface
--export([send/2, call/2, call/3, callback/3, ping/0, restart_peer/0]).
+-export([send/2, call/2, call/3, callback/3, add_listener/1, ping/0, restart_peer/0]).
 -export([start/0, start/1, start/2, start_link/0, start_link/1, start_link/2, stop/0]).
 
 % gen_server exports
@@ -43,13 +43,13 @@
 -define(JNODEBIN, "jnode").
 -define(BLOCKING_TIMEOUT, 1000).
 
--record(ej, {workers  = []
-            ,worker   = no
-            ,n        = 0
-            ,peer     = null
-            ,bindir   = ?BINDIR
-            ,stopping = false
-            ,callbacks= null
+-record(ej, {workers           = []
+            ,worker            = no
+            ,n                 = 0
+            ,peer              = null
+            ,bindir            = ?BINDIR
+            ,stopping          = false
+            ,callbacks         = null
             }).
 
 %% ------ PUBLIC -----
@@ -101,6 +101,24 @@ call(Tag,Msg = [_|_],Timeout) ->
 callback(Tag,Msg = [_|_],Fun) when is_function(Fun) ->
     gen_server:cast(?SRVNAME, {callback, Ref=get_ref(), Tag, Msg}),
     callback_loop(Ref,Fun).
+
+% @doc Register a listener process receiving messages
+% of the form {From, ej_notify, Notification}.
+%
+% Currently implemented notifications are:
+%
+% {From, ej_notify, start} - sent when the server is starting.
+% {From, ej_notify, stop}  - sent when the server is stopping.
+%
+% This registration survives server crash.
+add_listener(Pid) when is_pid(Pid) ->
+    {ok,Listeners} = application:get_env(ej, listeners),
+    application:set_env(ej, listeners, sets:add_element(Pid, Listeners)).
+
+% @doc Remove a listener process.
+del_listener(Pid) when is_pid(Pid) ->
+    {ok,Listeners} = application:get_env(ej, listeners),
+    application:set_env(ej, listeners, sets:del_element(Pid, Listeners)).
 
 % @doc Ping the peer. This will not use net_adm:ping but
 % the ej_srv message channel to the Java node to test this
@@ -181,6 +199,9 @@ handle_info({Port,{data,Msg}},S) when is_port(Port) ->
     log:info(self(),"port says: ~p", [Msg]),
     {noreply,S};
 % ej_srv messages
+handle_info({From,notify_start}, S) ->
+    notify_listeners(start),
+    {noreply,S};
 handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
     log:debug(self(), "info handshake from: ~w", [From]),
     {noreply, populate_peer(From,S)};
@@ -256,6 +277,7 @@ initialize(S) ->
                                 _Any     -> Acc
                             end
                     end, [], lists:seq(1,S#ej.n)),
+    erlang:send_after(50, self(), {self(),notify_start}),
     S2#ej{workers=Workers,bindir=Bindir}.
 
 handshake(Bindir) ->
@@ -312,7 +334,20 @@ run_handshake(Peer) ->
             {error,no_answer}
     end.
 
+notify_listeners(What) ->
+    {ok, Listeners} = application:get_env(listeners),
+    case sets:is_set(Listeners) of
+        true ->
+            L2 = sets:to_list(Listeners),
+            log:debug(self(), "About to send notification '~p' to listeners: ~p", [What,L2]),
+            lists:map(
+                fun(Pid) -> Pid ! {self(), ej_notify, What} end, L2);
+        false -> 
+            log:error(self(), "not a set ~p", [Listeners])
+    end.
+
 shutdown(Peer,S) ->
+    notify_listeners(stop),
     lists:map(fun(W) -> W ! {'STOP'} end, S#ej.workers),
     shutdown_peer(Peer).
 

@@ -76,6 +76,15 @@ handle_cast(Msg,S) ->
     {noreply, S}.
 
 % @hidden
+handle_info(Msg={From, ej_notify, start}, S) ->
+    log:debug(self(), "got notification: ~p", [Msg]),
+    timer:sleep(100),
+    neo4j:start(),
+    {noreply, S};
+handle_info(Msg={From, ej_notify, stop}, S) ->
+    log:debug(self(), "got notification: ~p", [Msg]),
+    erlang:send_after(50, self(), {'STOP'}),
+    {noreply, S};
 handle_info({'STOP'}, S) ->
     case S#neo4j.worker of
         yes -> nop;
@@ -110,13 +119,15 @@ initialize(S) ->
         Msg -> 
             log:debug(self(), "~p", [Msg]),
             case neo4j:has_db() of
-                true -> S#neo4j{db=true};
+                true  -> 
+                    S#neo4j{db=true};
                 false -> 
                     log:error(self(), "no database available", []),
                     erlang:send_after(100, self(), {'STOP'}),
                     S#neo4j{db=false}
             end
     end,
+    ej_srv:add_listener(self()),
     Workers =
         lists:foldl(fun(_I,Acc) -> 
                             case start_worker(S1) of
