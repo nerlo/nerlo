@@ -107,7 +107,7 @@ vertex_get_edges(?VERTEX(Id)) ->
 
 % @doc Get the list of edges of a given type for a vertex.
 vertex_get_edges(V=?VERTEX(Id), Type) ->
-    [ E || E=?EDGE(EId,T,A,B) <- vertex_get_edges(V), T =:= Type ].
+    [ E || E=?EDGE(EId,A,B,T) <- vertex_get_edges(V), T =:= Type ].
 
 % @doc Get all vertices connected ith a given vertex.
 vertex_get_neighbourhood(V=?VERTEX(Id)) ->
@@ -303,7 +303,7 @@ private_index(Id, Key, Val, Op) ->
 
 get_other_nodes(Id,Edges) ->
     lists:map(
-        fun(?EDGE(EId,T,A,B))->
+        fun(?EDGE(EId,A,B,T))->
             if 
                 A =:= Id -> ?VERTEX(B);
                 true     -> ?VERTEX(A)
