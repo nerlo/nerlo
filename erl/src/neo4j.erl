@@ -14,6 +14,7 @@
         ,add_edge/3
         ,del_edge/1
         ,vertex_get_edges/1
+        ,vertex_get_edges/2
         ,vertex_set_property/3
         ,vertex_del_property/2
         ,vertex_get_property/2
@@ -26,7 +27,6 @@
         ,edge_del_property/2
         ,edge_get_property/2
         ,edge_get_properties/1
-        ,traverse/2
         ,index_add_vertex/3
         ,index_del_vertex/3
         ,index_get_vertex/2
@@ -103,6 +103,22 @@ vertex_get_edges(?VERTEX(Id)) ->
         Error -> Error
     end.
 
+% @doc Get the list of edges of a given type for a vertex.
+vertex_get_edges(V=?VERTEX(Id), Type) ->
+    [ E || E=?EDGE(EId,T,A,B) <- vertex_get_edges(V), T =:= Type ].
+
+vertex_get_neighbourhood(V=?VERTEX(Id)) ->
+    lists:map(
+        fun(?EDGE(EId,T,A,B))->
+            if 
+                A =:= Id ->
+                    B;
+                true ->
+                    A
+            end
+        end, 
+        vertex_get_edges(V)).
+
 % @doc Set a property at a vertex.
 vertex_set_property(?VERTEX(Id), Key, Val) ->
     private_set_property(vertex, Id, Key, Val).
@@ -163,23 +179,6 @@ edge_get_property(?EDGE(Id,_Type,_A,_B), Key) ->
 
 edge_get_properties(?EDGE(Id,_Type,_A,_B)) ->
     private_get_properties(edge, Id).
-
-% neo4j:traverse(fun(Args) -> io:format("~n>>> inside fun: ~p~n", [Args]) end).
-traverse(?VERTEX(Id), Fun) when is_function(Fun) ->
-%traverse(?VERTEX(Id), Order, Stop, Return, Type, Dir, Fun) when is_function(Fun) ->
-    F = fun(Id) -> Fun(?VERTEX(Id)) end,
-    Ref = ej_srv:callback(?TAG_CALL, 
-                          [?HANDLER
-                           ,{call,traverse}
-                           ,{id,Id}]
-                          ,F).
-%%                                      ,{id,Id}
-%%                                      ,{order,Order}
-%%                                      ,{stop,Stop}
-%%                                      ,{return,Return}
-%%                                      ,{type,Type}
-%%                                      ,{direction,Dir}]),
-
 
 % @doc Add a vertex to the index.
 index_add_vertex(?VERTEX(Id), Key, Val) ->
@@ -293,21 +292,5 @@ private_index(Id, Key, Val, Op) ->
         Error -> Error
     end.
 
-
-%% loop(Ref, Fun) ->
-%%     Self = self(),
-%%     receive
-%%         {_From, Ref, [{result,Id}]} ->
-%%             Fun(?VERTEX(Id)),
-%%             loop(Ref, Fun);
-%%         {_From, Ref, {?TAG_OK, [{result,?EJCALLBACKSTOP}]}} ->
-%%             ok;
-%%         {_From, Ref, {?TAG_ERROR, [{result,?EJCALLBACKTIMEOUT}]}} ->
-%%             {error, timeout};
-%%         {_From, Ref, {?TAG_ERROR, Reason}} ->
-%%             {error,Reason};        
-%%         Any ->
-%%             {error, bogus_message_received, {self=Ref}, {answer=Any}}
-%%     end.
 
 
