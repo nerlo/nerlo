@@ -2,6 +2,12 @@ package org.ister.graphdb;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.log4j.Logger;
 
@@ -10,7 +16,9 @@ import org.ister.ej.Main;
 import org.ister.ej.Msg;
 import org.ister.ej.MsgTag;
 import org.ister.ej.Node;
+import org.ister.ej.ConcurrencyUtil;
 import org.ister.graphdb.executor.*;
+import org.ister.nerlo.Fiber;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
@@ -29,6 +37,10 @@ public class DbMsgHandler extends AbstractMsgHandler {
 	private String path = null;
 	private GraphDatabaseService db = null;
 	private IndexService index = null;
+	private final ExecutorService yielder = Executors.newSingleThreadExecutor();
+	
+	private final ExecutorService exec = Executors.newCachedThreadPool();
+	private final CompletionService<Msg> service = new ExecutorCompletionService<Msg>(this.exec);
 	
 	public void init(Node node) {
 		super.init(node);
@@ -57,6 +69,26 @@ public class DbMsgHandler extends AbstractMsgHandler {
             })
         );
         log.debug("shutdown hook has been set");
+
+        final Node nodeRef = node;
+    	yielder.submit(new Runnable() {
+            public void run(){
+            	log.debug("yielder entering run loop");
+                while (true) {
+                   try {
+                   	   Future<Msg> fu = service.take();
+                   	   nodeRef.sendPeer(fu.get());
+                   } catch(ExecutionException e) {
+                       log.error("Exception: \n" + e.toString());
+                       ConcurrencyUtil.peelException(e.getCause());
+                   } catch(InterruptedException e) {
+                   	   log.error("Exception: \n" + e.toString());
+                   	   Thread.currentThread().interrupt();
+                   }
+                }
+            }
+        });
+    	log.debug("yielder has been set");
         
         log.info("initialized: " + this.getClass().toString());
 	}
@@ -97,15 +129,15 @@ public class DbMsgHandler extends AbstractMsgHandler {
     				node.sendPeer(errorAnswer(msg, "no_db"));
     				return;
     			}
-    			Msg answer = null;
     			String id = (String) msg.get("call");
     			AbstractGraphdbMsgExecutor ex = getExecutor(id);
     			if (ex == null) {
-    				answer = errorAnswer(msg, "no_executor");
+    				Msg answer = errorAnswer(msg, "no_executor");
+    				node.sendPeer(answer);
     			} else {
-        			answer = ex.exec(msg);
+    				ex.setMsg(msg);
+    				this.service.submit(ex);
     			}
-    			node.sendPeer(answer);
     		    return;
     		} 
     	}
@@ -115,7 +147,9 @@ public class DbMsgHandler extends AbstractMsgHandler {
 
 	@Override
 	public void shutdown() {
+		exec.shutdown();
 		dbShutdown();
+		yielder.shutdown();
 	}
 	
 	

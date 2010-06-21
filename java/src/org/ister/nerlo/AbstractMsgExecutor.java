@@ -2,6 +2,7 @@ package org.ister.nerlo;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.ister.ej.Msg;
 import org.ister.ej.MsgTag;
@@ -12,9 +13,11 @@ import org.ister.ej.Node;
  * @author ingo
  *
  */
-public abstract class AbstractMsgExecutor {
+public abstract class AbstractMsgExecutor implements Callable<Msg> {
 
 	protected Node node = null;
+	
+	private Msg msg = null;
 	
 	public final Msg exec(Msg msg) {
 		if (!checkMsg(msg)) {
@@ -26,6 +29,14 @@ public abstract class AbstractMsgExecutor {
 		} catch (ExecutorException e) {
 			return errorAnswer(msg, e.getMessage());
 		}
+	}
+	
+	public final void setMsg(Msg msg) {
+		this.msg = msg;
+	}
+	
+	public final Msg call() {
+		return exec(this.msg);
 	}
 	
 	public void init(Node node) {

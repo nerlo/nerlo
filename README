@@ -44,13 +44,13 @@ $ cd erl
 $ bin/shell
 erl 1> ej_app:start().
 erl 2> ej_srv:ping().
-erl 3> neo4j:start().
+erl 3> neo4j_app:start().
 erl 4> neo4j:has_db().
 erl 5> V1 = neo4j:add_vertex().
 erl 6> V2 = neo4j:add_vertex().
 erl 7> E1 = neo4j:add_edge(V1,V2).
 [...]
-erl 998> neo4j:stop().
+erl 998> neo4j_app:stop().
 erl 999> ej_app:stop().
 
 
