@@ -10,7 +10,7 @@
 
 	<target name="compile">
       <mkdir dir="${class.dir}"/>
-      <javac destdir="${class.dir}" debug="on" optimize="on">
+      <javac destdir="${class.dir}" debug="on" optimize="on" includeantruntime="false">
         <src path="${src.dir}"/>
         <classpath>
           <fileset dir="${lib.dir}">
@@ -34,11 +34,10 @@
                 	value=". ${deps.name}/OtpErlang.jar 
                 	         ${deps.name}/commons-cli-1.2.jar
                              ${deps.name}/log4j-1.2.15.jar
-                             ${deps.name}/neo4j-kernel-1.0.jar
-                             ${deps.name}/neo4j-index-1.0.jar
-                	         ${deps.name}/lucene-core-2.9.1.jar
+                             ${deps.name}/neo4j-kernel-1.1.jar
+                             ${deps.name}/neo4j-index-1.1.jar
+                	         ${deps.name}/lucene-core-2.9.3.jar
                 	         ${deps.name}/geronimo-jta_1.1_spec-1.1.1.jar
-                	         ${deps.name}/neo4j-commons-1.0.jar
             	          "/>
             </manifest>
             <fileset dir="${class.dir}"/>
@@ -48,10 +47,9 @@
         <copy file="${lib.dir}/OtpErlang.jar" todir="${dist.deps.dir}"/>
         <copy file="${lib.dir}/commons-cli-1.2.jar" todir="${dist.deps.dir}"/>
 		<copy file="${lib.dir}/log4j-1.2.15.jar" todir="${dist.deps.dir}"/>
-		<copy file="${lib.dir}/neo4j-kernel-1.0.jar" todir="${dist.deps.dir}"/>
-		<copy file="${lib.dir}/neo4j-index-1.0.jar" todir="${dist.deps.dir}"/>
-		<copy file="${lib.dir}/lucene-core-2.9.1.jar" todir="${dist.deps.dir}"/>
+		<copy file="${lib.dir}/neo4j-kernel-1.1.jar" todir="${dist.deps.dir}"/>
+		<copy file="${lib.dir}/neo4j-index-1.1.jar" todir="${dist.deps.dir}"/>
+		<copy file="${lib.dir}/lucene-core-2.9.3.jar" todir="${dist.deps.dir}"/>
 		<copy file="${lib.dir}/geronimo-jta_1.1_spec-1.1.1.jar" todir="${dist.deps.dir}"/>
-		<copy file="${lib.dir}/neo4j-commons-1.0.jar" todir="${dist.deps.dir}"/>
     </target>
 </project>

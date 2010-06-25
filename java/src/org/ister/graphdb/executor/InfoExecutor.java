@@ -13,7 +13,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
-import org.neo4j.kernel.impl.core.NeoModule;
+import org.neo4j.kernel.impl.core.GraphDbModule;
 import org.neo4j.kernel.impl.core.NodeManager;
 import org.neo4j.kernel.impl.nioneo.store.PropertyStore;
 
@@ -43,7 +43,7 @@ public class InfoExecutor extends AbstractGraphdbMsgExecutor {
 	private Object info(String item) {
 		Object info = null;
 		
-        NeoModule mod = ((EmbeddedGraphDatabase)this.db).getConfig().getNeoModule();
+        GraphDbModule mod = ((EmbeddedGraphDatabase)this.db).getConfig().getGraphDbModule();
         NodeManager nm = mod.getNodeManager();
 		
 		Transaction tx = this.db.beginTx();
