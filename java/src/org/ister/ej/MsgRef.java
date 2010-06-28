@@ -54,4 +54,11 @@ public class MsgRef {
 		return new MsgRef(this);
 	}
 	
+	@Override
+	public boolean equals(Object other) {
+		return pid.equals(((MsgRef)other).pid) 
+		    && ref.equals(((MsgRef)other).ref) 
+		    &&   t.equals(((MsgRef)other).t);
+	}
+	
 }

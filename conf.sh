@@ -76,8 +76,8 @@ echo "checking Java dependencies"
 # OtpErlang.jar
 OTPERLANGJAR=`ls $ERL_HOME/lib/erlang/lib/jinterface*/priv/OtpErlang.jar`
 if [ $? -gt 0 ]; then
-    "ERROR: OtpErlang.jar not found"
-    "------ your Erlang distribution may not be properly installed"
+    echo "ERROR: OtpErlang.jar not found"
+    echo "------ your Erlang distribution may not be properly installed"
     exit 1
 fi
 echo "found $OTPERLANGJAR"

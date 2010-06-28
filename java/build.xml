@@ -1,36 +1,65 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project default="compile" name="nerlo build"  basedir=".">
-    
+
 	<property name="src.dir" value="src"/>
+	<property name="test.dir" value="test"/>
 	<property name="class.dir" value="classes"/>
+	<property name="testclass.dir" value="test-classes"/>
 	<property name="dist.dir" value="dist"/>
 	<property name="lib.dir" value="lib"/>
 	<property name="deps.name" value="deps"/>
 	<property name="dist.deps.dir" value="${dist.dir}/${deps.name}"/>
 
 	<target name="compile">
-      <mkdir dir="${class.dir}"/>
-      <javac destdir="${class.dir}" debug="on" optimize="on" includeantruntime="false">
-        <src path="${src.dir}"/>
-        <classpath>
-          <fileset dir="${lib.dir}">
-            <include name="**/*.jar" />
-          </fileset>
-        </classpath>
-      </javac>
-   </target>
+		<mkdir dir="${class.dir}"/>
+		<javac destdir="${class.dir}" debug="on" optimize="on" includeantruntime="false">
+			<src path="${src.dir}"/>
+			<classpath id="classpath">
+				<fileset dir="${lib.dir}">
+					<include name="**/*.jar" />
+				</fileset>
+			</classpath>
+		</javac>
+	</target>
 
-   <target name="clean">
-      <delete dir="${class.dir}"/>
-   	  <delete dir="${dist.dir}"/>
-   </target>	
-	
+	<target name="compile-test" depends="compile">
+		<mkdir dir="${testclass.dir}"/>
+		<javac destdir="${testclass.dir}" debug="on" optimize="on" includeantruntime="false">
+			<src path="${test.dir}"/>
+			<classpath id="testclasspath">
+				<fileset dir="${lib.dir}">
+					<include name="**/*.jar" />
+				</fileset>
+				<pathelement path="${class.dir}" />
+				<pathelement path="${testclass.dir}" />
+			</classpath>
+		</javac>
+	</target>
+
+	<target name="test" depends="compile-test">
+		<junit>
+			<classpath refid="testclasspath" />
+
+
+			<batchtest>
+				<fileset dir="${testclass.dir}"/>
+				<formatter type="brief" usefile="false"/>
+			</batchtest>
+		</junit>
+	</target>
+
+	<target name="clean">
+		<delete dir="${class.dir}"/>
+		<delete dir="${testclass.dir}"/>
+		<delete dir="${dist.dir}"/>
+	</target>
+
 	<target name="jar" depends="compile">
-    	<mkdir dir="${dist.dir}"/>
-        <jar destfile="${dist.dir}/nerlo.jar">
-            <manifest>
-                <attribute name="Main-Class" value="org.ister.ej.Main"/>
-                <attribute name="Class-Path" 
+		<mkdir dir="${dist.dir}"/>
+		<jar destfile="${dist.dir}/nerlo.jar">
+			<manifest>
+				<attribute name="Main-Class" value="org.ister.ej.Main"/>
+				<attribute name="Class-Path" 
                 	value=". ${deps.name}/OtpErlang.jar 
                 	         ${deps.name}/commons-cli-1.2.jar
                              ${deps.name}/log4j-1.2.15.jar
@@ -39,17 +68,17 @@
                 	         ${deps.name}/lucene-core-2.9.3.jar
                 	         ${deps.name}/geronimo-jta_1.1_spec-1.1.1.jar
             	          "/>
-            </manifest>
-            <fileset dir="${class.dir}"/>
-        </jar>
-        <delete dir="${dist.dir}/deps"/>
-        <mkdir dir="${dist.dir}/deps"/>
-        <copy file="${lib.dir}/OtpErlang.jar" todir="${dist.deps.dir}"/>
-        <copy file="${lib.dir}/commons-cli-1.2.jar" todir="${dist.deps.dir}"/>
+			</manifest>
+			<fileset dir="${class.dir}"/>
+		</jar>
+		<delete dir="${dist.dir}/deps"/>
+		<mkdir dir="${dist.dir}/deps"/>
+		<copy file="${lib.dir}/OtpErlang.jar" todir="${dist.deps.dir}"/>
+		<copy file="${lib.dir}/commons-cli-1.2.jar" todir="${dist.deps.dir}"/>
 		<copy file="${lib.dir}/log4j-1.2.15.jar" todir="${dist.deps.dir}"/>
 		<copy file="${lib.dir}/neo4j-kernel-1.1.jar" todir="${dist.deps.dir}"/>
 		<copy file="${lib.dir}/neo4j-index-1.1.jar" todir="${dist.deps.dir}"/>
 		<copy file="${lib.dir}/lucene-core-2.9.3.jar" todir="${dist.deps.dir}"/>
 		<copy file="${lib.dir}/geronimo-jta_1.1_spec-1.1.1.jar" todir="${dist.deps.dir}"/>
-    </target>
+	</target>
 </project>
