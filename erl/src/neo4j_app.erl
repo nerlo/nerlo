@@ -21,7 +21,7 @@ stop() ->
     application:stop(?APPNAME).
 
 start(Type, Args) ->
-    log:info(self(), "starting; type: ~p args: ~p", [Type,Args]),
+    ej_log:info("starting; type: ~p args: ~p", [Type,Args]),
     case Type of
         normal   -> neo4j_sup:start_link([]);
         takeover -> ok;
@@ -29,13 +29,13 @@ start(Type, Args) ->
     end.
 
 prep_stop(State) ->     
-    log:info(self(), "prepare stopping with state: ~p", [State]),
+    ej_log:info("prepare stopping with state: ~p", [State]),
     neo4j_srv:stop(),
     timer:sleep(1000),
     ok.
 
 stop(State) ->     
-    log:info(self(), "stopping with state: ~p", [State]),
+    ej_log:info("stopping with state: ~p", [State]),
     ok.
     
 getenv(K,Def) ->

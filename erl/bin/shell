@@ -10,8 +10,10 @@ export ERL_HOME
 export JAVA_HOME
 export ERL_CRASH_DUMP=${SCRIPT_DIR}/erl_crash.dump
 
+LOG4ERL=../priv/log4erl-0.9.0/ebin
+
 ERL=${ERL_HOME}/bin/erl
-ERL_FLAGS="+K true +S 1:1 -pa ${SCRIPT_DIR}/../ebin -setcookie `cat ${SCRIPT_DIR}/cookie`"
+ERL_FLAGS="+K true +S 1:1 -pa ${SCRIPT_DIR}/../ebin -pz ${LOG4ERL} -setcookie `cat ${SCRIPT_DIR}/cookie`"
 
 NAME="shell"
 

@@ -1,5 +1,6 @@
 all:
 	(cd src;$(MAKE) all)
+	(cd priv/log4erl-0.9.0;$(MAKE))
 	(cd test;$(MAKE) all)
 
 final: clean

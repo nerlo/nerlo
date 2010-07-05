@@ -19,6 +19,8 @@ geronimo-jta_1.1_spec-1.1.1.jar
 neo4j-kernel-1.1.jar
 neo4j-index-1.1.jar
 
+log4erl-0.9.0
+
 NOTE: Dependency management is by hand for now. 
 Later we may use Ivy or Maven for Java dependencies.
 

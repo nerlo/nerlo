@@ -21,7 +21,6 @@ stop() ->
     application:stop(?APPNAME).
 
 start(Type, Args) ->
-    log:info(self(), "starting; type: ~p args: ~p", [Type,Args]),
     application:set_env(?APPNAME, listeners, sets:new()),
     case Type of
         normal   -> ej_sup:start_link([]);
@@ -30,13 +29,14 @@ start(Type, Args) ->
     end.
 
 prep_stop(State) ->     
-    log:info(self(), "prepare stopping with state: ~p", [State]),
+    ej_log:info("prepare stopping with state: ~p", [State]),
     ej_srv:stop(),
     timer:sleep(1000),
     ok.
 
 stop(State) ->     
-    log:info(self(), "stopping with state: ~p", [State]),
+    ej_log:info("stopping with state: ~p", [State]),
+    ej_log:stop(),
     ok.
     
 getenv(K,Def) ->

@@ -140,7 +140,7 @@ init(S) ->
         yes -> S;
         no  -> initialize(S)
     end,
-    log:info(self(), "~w initialized with state ~w", [?MODULE, S1]),
+    %ej_ej_log:info("~w initialized with state ~w", [?MODULE, S1]),
     {ok,S1}.
 
 % @hidden     
@@ -165,7 +165,7 @@ handle_call({bad},_From,S) ->
     erlang:foobar(),
     {noreply,S};
 handle_call(Msg,From,S) ->
-    log:warn(self(), "Cannot understand call from ~w: ~w", [From,Msg]),
+    ej_log:warn("Cannot understand call from ~w: ~w", [From,Msg]),
     {reply, {error, unknown_msg}, S}.
 
 % @hidden
@@ -174,10 +174,10 @@ handle_cast({send,From,Ref,Tag,Msg}, S) ->
     gen_server:reply(From, Result),
     {noreply, S};
 handle_cast({set_peer, Peer}, S) ->
-    log:debug(self(), "replacing peer ~p with ~p: ", [S#ej.peer, Peer]),
+    ej_log:debug("replacing peer ~p with ~p: ", [S#ej.peer, Peer]),
     {noreply, S#ej{peer=Peer}};
 handle_cast({callback, Ref, Tag, Msg}, S) ->
-    log:debug(self(), "callback: ~p", [Ref]),
+    ej_log:debug("callback: ~p", [Ref]),
     send_peer(S#ej.peer,Ref,Tag,Msg),
     {noreply,S};
 handle_cast({'STOP'}, S) ->
@@ -185,10 +185,10 @@ handle_cast({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S#ej.peer,S)
     end,
-    log:info(self(),"stopping with state: ~w", [S]),
+    ej_log:info("stopping with state: ~w", [S]),
     {noreply, S#ej{stopping=true}};
 handle_cast(Msg,S) ->
-    log:info(self(),"cannot handle cast: ~w", [Msg]),
+    ej_log:info("cannot handle cast: ~w", [Msg]),
     {noreply, S}.
 
 % @hidden
@@ -196,17 +196,17 @@ handle_cast(Msg,S) ->
 handle_info({Port,{data,"\n"}},S) when is_port(Port) ->
     {noreply,S};
 handle_info({Port,{data,Msg}},S) when is_port(Port) ->
-    log:info(self(),"port says: ~p", [Msg]),
+    ej_log:info("port says: ~p", [Msg]),
     {noreply,S};
 % ej_srv messages
 handle_info({From,notify_start}, S) ->
     notify_listeners(start),
     {noreply,S};
 handle_info({From,_Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}},S) ->
-    log:debug(self(), "info handshake from: ~w", [From]),
+    ej_log:debug("info handshake from: ~w", [From]),
     {noreply, populate_peer(From,S)};
 handle_info(Msg={'EXIT', Pid, Reason},S) ->
-    log:warn(self(), "EXIT from ~w with reason: ~w", [Pid,Reason]),
+    ej_log:warn("EXIT from ~w with reason: ~w", [Pid,Reason]),
     S1 =
     case is_port(Pid) of
         true  -> S;
@@ -216,29 +216,29 @@ handle_info(Msg={'EXIT', Pid, Reason},S) ->
 handle_info({'STOP'},S) ->
     case S#ej.worker of
         yes -> 
-            log:info(self(),"stopping with state: ~w", [S]),
+            ej_log:info("stopping with state: ~w", [S]),
             {stop, normal, S};
         no  -> 
             {noreply,S}
     end;
 % messages to be routed to client
 handle_info({From,Ref={Client,_Id},M={?TAG_FRAGMENT,Msg}},S) ->
-    log:debug(self(), "got fragment: From=~w Ref=~w Msg=~w", [From,Ref,M]),
+    ej_log:debug("got fragment: From=~w Ref=~w Msg=~w", [From,Ref,M]),
     if
-        Client =:= self() -> log:error(self(), "possible message loop", []);
+        Client =:= self() -> ej_log:error("possible message loop", []);
         true              -> Client ! {self(),Ref,Msg}
     end,
     {noreply, S};
 handle_info({From,Ref={Client,_Id},Msg},S) ->
-    log:debug(self(), "got result: From=~w Ref=~w Msg=~w", [From,Ref,Msg]),
+    ej_log:debug("got result: From=~w Ref=~w Msg=~w", [From,Ref,Msg]),
     if
-        Client =:= self() -> log:error(self(), "possible message loop", []);
+        Client =:= self() -> ej_log:error("possible message loop", []);
         true              -> Client ! {self(),Ref,Msg}
     end,
     {noreply, S};
 % unknown
 handle_info(Msg,S) ->
-    log:info(self(),"info: ~p", [Msg]),
+    ej_log:info(self(),"info: ~p", [Msg]),
     {noreply,S}.
 
 % @hidden     
@@ -253,7 +253,7 @@ code_change(_OldVsn, S, _Extra) ->
 %% ------ PRIVATE -----
 
 send_peer(Peer,Ref,Tag,Msg) ->
-    log:debug(self(), "send_peer ~w: ~w", [Peer,?EJMSG(Ref,Tag,Msg)]),
+    ej_log:debug("send_peer ~w: ~w", [Peer,?EJMSG(Ref,Tag,Msg)]),
     Peer ! ?EJMSG(Ref,Tag,Msg).
 
 start_worker(S) ->
@@ -291,19 +291,19 @@ handshake(Bindir) ->
     case send_ping(Pid) of
         pong  -> Pid;
         Error -> 
-            log:error(self(), "peer not reachable: ~w", [Error]),
+            ej_log:error("peer not reachable: ~w", [Error]),
             throw({peer_does_not_answer,Error})
     end.
     
 quick_handshake(Peer) ->
-    log:info(self(), "quick handshake to: ~w", [Peer]),
+    ej_log:info("quick handshake to: ~w", [Peer]),
     run_handshake(Peer).
 
 % TODO we should retry handshake after opening port
 % for at least 3 times to allow first JVM startup ever
 % to be a little slower (not yet cached in the OS)
 full_handshake(Peer,Bindir) ->
-    log:info(self(), "full handshake to: ~w", [Peer]),
+    ej_log:info("full handshake to: ~w", [Peer]),
     port(Bindir),
     timer:sleep(500),
     case run_handshake(Peer) of
@@ -317,33 +317,39 @@ port(Bindir) ->
         ++ " -sname " ++ ?PEERSTR
         ++ " -cookie " ++ atom_to_list(erlang:get_cookie()),
     Cmd  = Bindir ++ "/" ++ ?JNODEBIN ++ " " ++ Args ++ " &",
-    log:info(self(), "open port to org.ister.ej.Node: ~p", [Cmd]),
+    ej_log:info("open port to org.ister.ej.Node: ~p", [Cmd]),
     Port = erlang:open_port({spawn, Cmd},[stderr_to_stdout]),
-    log:info(self(), "port: ~w", [Port]).
+    ej_log:info("port: ~w", [Port]).
 
 run_handshake(Peer) ->
     send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,handshake)]),
     receive
         {From,Ref,{?TAG_OK,[?EJMSGPART(call,handshake)]}} -> 
-            log:info(self(), "got handshake from: ~w", [From]),
+            ej_log:info("got handshake from: ~w", [From]),
             erlang:link(From),
             {ok,From}
     after
         ?BLOCKING_TIMEOUT -> 
-            log:info(self(), "handshake timeout", []),
+            ej_log:info("handshake timeout", []),
             {error,no_answer}
     end.
 
 notify_listeners(What) ->
-    {ok, Listeners} = application:get_env(listeners),
+    Listeners = get_listeners(),
     case sets:is_set(Listeners) of
         true ->
             L2 = sets:to_list(Listeners),
-            log:debug(self(), "About to send notification '~p' to listeners: ~p", [What,L2]),
+            ej_log:debug("About to send notification '~p' to listeners: ~p", [What,L2]),
             lists:map(
                 fun(Pid) -> Pid ! {self(), ej_notify, What} end, L2);
         false -> 
-            log:error(self(), "not a set ~p", [Listeners])
+            ej_log:error("not a set ~p", [Listeners])
+    end.
+
+get_listeners() ->
+    case application:get_env(listeners) of
+        {ok, Ls} -> Ls;
+        Any      -> []
     end.
 
 shutdown(Peer,S) ->
@@ -355,11 +361,11 @@ shutdown_peer(Peer) ->
     send_peer(Peer, Ref=get_ref(), ?TAG_NODE, [?EJMSGPART(call,shutdown)]),
     receive
         {Peer,Ref,{?TAG_OK,[?EJMSGPART(call,bye)]}} -> 
-            log:info(self(), "shutdown confirmed by peer", []),
+            ej_log:info("shutdown confirmed by peer", []),
             ok
     after
         ?BLOCKING_TIMEOUT ->
-            log:error(self(), "shutdown timeout: no ok from peer", []),
+            ej_log:error("shutdown timeout: no ok from peer", []),
             well
     end.
 
@@ -371,7 +377,7 @@ handle_exit({'EXIT', Peer, noconnection}, S) when Peer =:= S#ej.peer ->
             populate_peer(NewPeer,S)
     end;
 handle_exit(Any,S) ->
-    log:debug(self(), "don't know how to handle exit: ~w", [Any]),
+    ej_log:debug("don't know how to handle exit: ~w", [Any]),
     S.
 
 send_ping(Peer) ->

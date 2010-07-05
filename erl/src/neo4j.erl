@@ -311,3 +311,17 @@ get_other_nodes(Id,Edges) ->
         end, 
         Edges).
 
+
+%% ------ TESTS ------
+
+start_test() ->
+    ej_srv:start(1,"../bin"),
+    R = ?MODULE:start(),
+    timer:sleep(300),
+    ?assertEqual(R, ok).
+
+stop_test() ->
+    R = ?MODULE:stop(),
+    ?assertEqual(R, ok),
+    ej_srv:stop().
+

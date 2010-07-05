@@ -55,12 +55,12 @@ init(S) ->
         yes -> S;
         no  -> initialize(S)
     end,
-    log:info(self(), "~w initialized with state ~w", [?MODULE, S1]),
+    ej_log:info("~w initialized with state ~w", [?MODULE, S1]),
     {ok,S1}.
 
 % @hidden     
 handle_call(Msg,From,S) ->
-    log:warn(self(), "Cannot understand call from ~w: ~w", [From,Msg]),
+    ej_log:warn("Cannot understand call from ~w: ~w", [From,Msg]),
     {reply, {error, unknown_msg}, S}.
 
 % @hidden
@@ -69,20 +69,20 @@ handle_cast({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S)
     end,
-    log:info(self(),"stopping with state: ~w", [S]),
+    ej_log:info("stopping with state: ~w", [S]),
     {stop, normal, S};
 handle_cast(Msg,S) ->
-    log:info(self(),"cannot handle cast: ~w", [Msg]),
+    ej_log:info("cannot handle cast: ~w", [Msg]),
     {noreply, S}.
 
 % @hidden
 handle_info(Msg={From, ej_notify, start}, S) ->
-    log:debug(self(), "got notification: ~p", [Msg]),
+    ej_log:debug("got notification: ~p", [Msg]),
     timer:sleep(100),
     neo4j:start(),
     {noreply, S};
 handle_info(Msg={From, ej_notify, stop}, S) ->
-    log:debug(self(), "got notification: ~p", [Msg]),
+    ej_log:debug("got notification: ~p", [Msg]),
     erlang:send_after(50, self(), {'STOP'}),
     {noreply, S};
 handle_info({'STOP'}, S) ->
@@ -90,10 +90,10 @@ handle_info({'STOP'}, S) ->
         yes -> nop;
         no  -> shutdown(S)
     end,
-    log:info(self(),"stopping with state: ~w", [S]),
+    ej_log:info("stopping with state: ~w", [S]),
     {stop, normal, S};
 handle_info(Msg,S) ->
-    log:info(self(),"info: ~p", [Msg]),
+    ej_log:info("info: ~p", [Msg]),
     {noreply,S}.
 
 % @hidden     
@@ -114,15 +114,15 @@ initialize(S) ->
     S1 =
     case catch(neo4j:start()) of
         {'EXIT',Reason} -> 
-            log:error(self(), "starting neo4j failed: ~w", [Reason]),
+            ej_log:error("starting neo4j failed: ~w", [Reason]),
             S;
         Msg -> 
-            log:debug(self(), "~p", [Msg]),
+            ej_log:debug("~p", [Msg]),
             case neo4j:has_db() of
                 true  -> 
                     S#neo4j{db=true};
                 false -> 
-                    log:error(self(), "no database available", []),
+                    ej_log:error("no database available", []),
                     erlang:send_after(100, self(), {'STOP'}),
                     S#neo4j{db=false}
             end

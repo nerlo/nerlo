@@ -16,13 +16,13 @@ start_link(Args) when is_list(Args) ->
     supervisor:start_link({local,?MODULE}, ?MODULE, [Args]).
 
 init(Args = [_|_]) ->
-    log:info(self(), "initializing supervisor '~p' with Args: ~w", [?MODULE, Args]),
+    ej_log:info("initializing supervisor '~p' with Args: ~w", [?MODULE, Args]),
     [SrvArgs|_] = Args,
     Spec = 
     {ok,{{one_for_one,10,10},
         [get_spec(SrvArgs)]
     }},
-    log:debug(self(), "child spec: ~w", [Spec]),
+    ej_log:debug("child spec: ~w", [Spec]),
     Spec.
 
 get_spec(SrvArgs) ->

@@ -6,6 +6,7 @@ SCRIPT_DIR="`( cd \"${SCRIPT_DIR}\" && pwd )`"
 
 JAVA_DIST=$SCRIPT_DIR/java/dist
 JAVA_LIB=$SCRIPT_DIR/java/lib
+ERL_LIB=$SCRIPT_DIR/erl/priv
 
 if [ -f conf.cache ]; then
     echo "reading some vars from conf.cache"
@@ -100,7 +101,18 @@ do
     fi
 done
 
-
+echo "checking Erlang dependencies"
+EDEPS=`cat $ERL_LIB/DEPENDENCIES`
+for DEP in $EDEPS
+do
+    if [ -d $ERL_LIB/$DEP ]; then
+        echo "found $ERL_LIB/$DEP" 
+    else
+        echo "ERROR: not found $ERL_LIB/$DEP"
+        echo "------ please copy $DEP into $ERL_LIB and try again"
+        exit 1
+    fi
+done
 
 
 
